@@ -1,0 +1,74 @@
+{
+  "name": "Quot",
+  "version": "1.0.0",
+  "description": "A simple CAP project.",
+  "repository": "<Add your repository here>",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "@sap-cloud-sdk/http-client": "^4.0.2",
+    "@sap-cloud-sdk/resilience": "^4.0.2",
+    "@sap/cds": "^8",
+    "@sap/xssec": "^4",
+    "express": "^4",
+    "@sap-cloud-sdk/connectivity": "^3"
+  },
+  "devDependencies": {
+    "@cap-js/cds-types": "^0.9.0",
+    "@cap-js/sqlite": "^1",
+    "@sap/cds-dk": "^8",
+    "rimraf": "^5.0.5",
+    "mbt": "^1.2.29"
+  },
+  "scripts": {
+    "start": "cds-serve",
+    "watch-costplan": "cds watch --open costplan/webapp/index.html?sap-ui-xx-viewCache=false",
+    "undeploy": "cf undeploy Quot --delete-services --delete-service-keys --delete-service-brokers",
+    "build": "rimraf resources mta_archives && mbt build --mtar archive",
+    "deploy": "cf deploy mta_archives/archive.mtar --retries 1"
+  },
+  "cds": {
+    "requires": {
+      "auth": "xsuaa",
+      "connectivity": true,
+      "destinations": true,
+      "html5-runtime": true,
+      "ZBTP_SRV": {
+        "kind": "odata-v2",
+        "model": "srv/external/ZBTP_SRV",
+        "[production]": {
+          "credentials": {
+            "destination": "S4Hana",
+            "path": "/sap/opu/odata/sap/ZBTP_SRV"
+          }
+        },
+        "csrf": true,
+        "csrfInBatch": true
+      },
+      "ZAPI_SALES_QUOTATION_SRV": {
+        "kind": "odata-v2",
+        "model": "srv/external/ZAPI_SALES_QUOTATION_SRV",
+        "[production]": {
+          "credentials": {
+            "destination": "S4Hana",
+            "path": "/sap/opu/odata/sap/API_SALES_QUOTATION_SRV"
+          }
+        },
+        "csrf": true,
+        "csrfInBatch": true
+      },
+      "ZBTP_POST_QUOT_SRV": {
+        "kind": "odata-v2",
+        "model": "srv/external/ZBTP_POST_QUOT_SRV",
+        "[production]": {
+          "credentials": {
+            "destination": "S4Hana",
+            "path": "/sap/opu/odata/sap/ZBTP_POST_QUOT_SRV"
+          }
+        },
+        "csrf": true,
+        "csrfInBatch": true
+      }
+    }
+  }
+}
