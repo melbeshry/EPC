@@ -1,9 +1,19 @@
 <mvc:View controllerName="costplan.controller.mainPage"
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
+      xmlns:sap.m="sap.m"
+    xmlns:f="sap.f"
+    xmlns:w="sap.ui.integration.widgets"
+    xmlns:tnt="sap.tnt"
     xmlns:form="sap.ui.layout.form"
     xmlns:table="sap.ui.table"
-    xmlns:core="sap.ui.core">
+    xmlns:layout="sap.ui.layout"
+    xmlns:core="sap.ui.core"
+        xmlns:m="sap.m"
+        xmlns:u="sap.ui.unified"
+        	xmlns:macros="sap.fe.macros"
+        
+       >
     <Page id="_IDGenPage1" title="Cost Planning" showNavButton="false" class="sapUiContentPadding">
         <Panel id="_IDGenPanel1" backgroundDesign="Solid" class="sapUiSmallMargin">
             <headerToolbar>
@@ -19,10 +29,10 @@
                     <Input id="quotationInput" showValueHelp="true" valueHelpRequest=".onValueHelpRequest"
                            placeholder="Enter or select quotation number"
                            valueState="None" class="sapUiSmallMarginBottom" submit="onQuotationSubmit"/>
-
+<!-- 
                     <Label id="_IDGenLabel1" text="Item Number" required="true" design="Bold"></Label>
                     <Input id="itemInput" placeholder="Enter or select item number" valueState="None" class="sapUiSmallMarginBottom"
-                    showValueHelp="true" valueHelpRequest=".onItemValueHelpRequest" submit="onItemQuotationSubmit"/>
+                    showValueHelp="true" valueHelpRequest=".onItemValueHelpRequest" submit="onItemQuotationSubmit"/> -->
 
                     <Label id="_IDGenLabel9" text="Category" required="true" design="Bold"/>
                         <ComboBox id="categorySelect" placeholder="Select Category" items="{viewModel>/categories}"
@@ -38,6 +48,19 @@
             <Button id="sendToERPButton" text="Send to ERP" press="onSendToERP" type="Emphasized" enabled="{viewModel>/simulateButtonEnabled}"
                         class="sapUiSmallMarginTop"/>
 
+
+
+        </content>
+          </Panel>
+    
+	<TabContainer
+    items="{QuotationItemsModel>/quotationItemsNumbers}" id="myTabContainer" 
+					class="sapUiResponsiveContentPadding sapUiResponsivePadding--header"
+					 itemClose="itemCloseHandler"  itemSelect="onItemSelected">
+		<items >
+			<TabContainerItem id="_IDGenTabContainerItem1" name="{QuotationItemsModel>SalesQuotationItem}" modified="{modified}" >
+				<content>
+                
                 <table:Table id="serviceLinesTable" visible="true" width="auto" selectionMode="Single" class="sapUiSmallMarginTop">
                         <table:columns>
                         <table:Column id="_IDGenColumn1">
@@ -84,11 +107,16 @@
                         </table:Column>
                     </table:columns>
                 </table:Table>
+				</content>
+			</TabContainerItem>
+		</items>
+	</TabContainer>
+                    
+                  
 
-        </content>
 
 
-        </Panel>
+       
     </Page>
 
 

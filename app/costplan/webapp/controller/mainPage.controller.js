@@ -14,15 +14,32 @@ sap.ui.define([
     "sap/m/Input",
     "sap/m/Label",
     "sap/m/VBox",
-    "sap/ui/core/library"
-], (Controller, JSONModel, SelectDialog, Filter, FilterOperator, MessageBox, jQuery, Dialog, Button, Table, Column, Text, Input, Label, VBox, coreLibrary) => {
+    "sap/ui/core/library",
+    "sap/m/MessageToast",
+
+    "sap/ui/table/TreeTable", // Import TreeTable
+    "sap/ui/table/Column" // Import TreeTableColumn
+], (Controller, JSONModel, SelectDialog, MessageToast, Filter, FilterOperator, MessageBox, jQuery, Dialog, Button, Table, Column, Text, Input, Label, VBox, coreLibrary, TreeTable) => {
     "use strict";
 
     return Controller.extend("costplan.controller.mainPage", {
         onInit() {
+
+
+            const oTabContainer = this.byId("myTabContainer");
+            if (oTabContainer) {
+                oTabContainer.addEventDelegate({
+                    onAfterRendering: () => {
+                        oTabContainer.attachEventOnce("itemSelect", function () {
+                            console.log("Handled initial selection once after rendering");
+                        });
+                    }
+                });
+            }
             var oModel = new JSONModel({
                 quotationNumber: "",
                 itemNumber: "",
+                quotationItemsNumbers: [],
                 categories: [
                     { key: "EAndD", text: "E and D" },
                     { key: "Material", text: "Material" },
@@ -35,6 +52,7 @@ sap.ui.define([
                 selectedService: null,
                 simulateButtonEnabled: false,
                 simulationData: [],
+                indirectCostData: [], // New array for Indirect Cost data
                 totalAmount: "0.00"
             });
             this.getView().setModel(oModel, "viewModel");
@@ -43,46 +61,451 @@ sap.ui.define([
             const oODataModel = oComponent.getModel("ZBTP_POST_QUOT_SRVSampleService");
         },
 
+        loadQuotationItems: async function (sQuotation) {
+            if (!sQuotation) {
+                MessageBox.error("Quotation number is missing.");
+                return [];
+            }
+            try {
+                const oModel = this.getOwnerComponent().getModel();
+                const oBinding = oModel.bindList("/A_SalesQuotationItem", null, null, [
+                    new sap.ui.model.Filter("SalesQuotation", sap.ui.model.FilterOperator.EQ, sQuotation)
+                ]);
+                const aContexts = await oBinding.requestContexts(0, 100);
+                const aItems = aContexts.map(oContext => oContext.getObject());
+                console.log("Filtered Items:", aItems);
+                this.quotationItemsNumbers = aItems;
+                console.log(this.quotationItemsNumbers);
+
+                const oQuotationItemsModel = new sap.ui.model.json.JSONModel({ quotationItemsNumbers: aItems });
+
+                // Set model to view
+                this.getView().setModel(oQuotationItemsModel, "QuotationItemsModel");
+                return aItems;
+
+            } catch (err) {
+                console.error("Failed to fetch quotation items:", err);
+                MessageBox.error("Failed to load quotation items.");
+                return [];
+            }
+        },
+
+
+
+        onItemSelected: function (oEvent) {
+            console.log("onItemSelected fired"); // Debug log
+            const oSelectedItem = oEvent.getParameter("item"); // This is the selected TabContainerItem
+            console.log(oSelectedItem);
+          //  console.log(oSelectedItem?.getBindingContext()); // Default model
+            console.log(oSelectedItem?.getBindingContext("QuotationItemsModel")); // Named model
+
+            const oBindingContext = oSelectedItem?.getBindingContext("QuotationItemsModel");
+
+            if (oBindingContext) {
+                const sQuotationItem = oBindingContext.getProperty("SalesQuotationItem");
+                console.log(sQuotationItem);
+                
+                // MessageBox.show("Item " + sQuotationItem + " was selected");
+
+                // Optionally store it globally for later use
+                this.currentSelectedQuotationItem = sQuotationItem;
+                this.getView().getModel("viewModel").setProperty("/itemNumber", sQuotationItem);
+           // this.updateServiceLinesTable();
+            this.updateSimulateButtonState();
+
+                // You can now do something else with it, e.g., load services for this item
+                // this.loadServicesForItem(sQuotationItem);
+            }
+        },
+
+        addNewButtonPressHandler: function () {
+            var newEmployee = new TabContainerItem({
+                name: "New employee",
+                modified: false
+            });
+
+            var tabContainer = this.byId("myTabContainer");
+
+            tabContainer.addItem(
+                newEmployee
+            );
+            tabContainer.setSelectedItem(
+                newEmployee
+            );
+        },
+
+        itemCloseHandler: function (oEvent) {
+            // prevent the tab being closed by default
+            oEvent.preventDefault();
+
+            var oTabContainer = this.byId("myTabContainer");
+            var oItemToClose = oEvent.getParameter('item');
+
+            MessageBox.confirm("Do you want to close the tab '" + oItemToClose.getName() + "'?", {
+                onClose: function (oAction) {
+                    if (oAction === MessageBox.Action.OK) {
+                        oTabContainer.removeItem(oItemToClose);
+                        MessageToast.show("Item closed: " + oItemToClose.getName(), { duration: 500 });
+                    } else {
+                        MessageToast.show("Item close canceled: " + oItemToClose.getName(), { duration: 500 });
+                    }
+                }
+            });
+        },
+
+        // start sidebar:
+        onCollapseExpandPress() {
+            const oSideNavigation = this.byId("sideNavigation"),
+                bExpanded = oSideNavigation.getExpanded();
+
+            oSideNavigation.setExpanded(!bExpanded);
+        },
+
+        // end sidebar
+
+
         onValueHelpRequest(oEvent) {
             if (!this._oValueHelpDialog) {
-                this._oValueHelpDialog = new SelectDialog({
+                this._oValueHelpDialog = new sap.m.Dialog({
                     title: "Select Quotation Number",
-                    items: {
-                        path: "/A_SalesQuotation",
-                        template: new sap.m.StandardListItem({
-                            title: "{SalesQuotation}",
-                            type: "Active"
+                    content: [
+                        new sap.m.Table({
+                            id: this.createId("quotationTable"),
+                            mode: "SingleSelectMaster",
+                            growing: true,
+                            growingThreshold: 50,
+                            columns: [
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Quotation Number" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "PurchaseOrderByCustomer" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "CustomerPurchaseOrderDate" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "SoldToParty" }) })
+                            ],
+                            items: {
+                                path: "/A_SalesQuotation",
+                                parameters: {
+                                    $count: true
+                                },
+                                template: new sap.m.ColumnListItem({
+                                    type: "Active",
+                                    cells: [
+                                        new sap.m.Text({ text: "{SalesQuotation}" }),
+                                        new sap.m.Text({ text: "{PurchaseOrderByCustomer}" }),
+                                        new sap.m.Text({ text: "{CustomerPurchaseOrderDate}" }),
+                                        new sap.m.Text({ text: "{SoldToParty}" })
+                                    ]
+                                }),
+                                events: {
+                                    dataReceived: (oEvent) => {
+                                        const oBinding = oEvent.getSource();
+                                        const oTable = this.byId("quotationTable");
+                                        const aItems = oTable.getItems();
+                                        const oContext = oEvent.getParameter("data");
+                                        console.log("Total items received:", aItems.length);
+                                        console.log("Total count from server:", oContext?.__count || "N/A");
+                                        if (aItems.length === 0) {
+                                            sap.m.MessageBox.warning("No data found in A_SalesQuotation.");
+                                        }
+                                    }
+                                }
+                            }
                         })
-                    },
-                    confirm: this.onValueHelpConfirm.bind(this)
+                    ],
+                    beginButton: new sap.m.Button({
+                        text: "Confirm",
+                        press: (oEvent) => {
+                            const oTable = this.byId("quotationTable");
+                            const oSelectedItem = oTable.getSelectedItem();
+                            if (oSelectedItem) {
+                                const sQuotation = oSelectedItem.getCells()[0].getText();
+                                this.byId("quotationInput").setValue(sQuotation);
+                                this.getView().getModel("viewModel").setProperty("/quotationNumber", sQuotation);
+                                this.updateSimulateButtonState();
+                                this._oValueHelpDialog.close();
+                            }
+                        }
+                    }),
+                    endButton: new sap.m.Button({
+                        text: "Cancel",
+                        press: () => {
+                            this._oValueHelpDialog.close();
+                        }
+                    })
                 });
 
                 var oODataModel = this.getOwnerComponent().getModel();
                 this._oValueHelpDialog.setModel(oODataModel);
+                this.getView().addDependent(this._oValueHelpDialog);
             }
             this._oValueHelpDialog.open();
         },
 
-        onValueHelpConfirm(oEvent) {
-            var oSelectedItem = oEvent.getParameter("selectedItem");
-            if (oSelectedItem) {
-                var sQuotation = oSelectedItem.getTitle();
-                this.byId("quotationInput").setValue(sQuotation);
-                this.getView().getModel("viewModel").setProperty("/quotationNumber", sQuotation);
-                this.updateSimulateButtonState();
-            }
-        },
-
-        onQuotationSubmit(oEvent) {
+        async onQuotationSubmit(oEvent) {
             var sQuotation = oEvent.getSource().getValue().trim();
+            console.log(sQuotation);
+
             if (!sQuotation) {
                 MessageBox.error("Please enter a valid quotation number.");
                 return;
             }
             this.byId("quotationInput").setValue(sQuotation);
             this.getView().getModel("viewModel").setProperty("/quotationNumber", sQuotation);
+
+            // load QuotationItems:
+            const aItems = await this.loadQuotationItems(sQuotation);
+            if (aItems.length === 0) {
+                MessageBox.information("No items found for this quotation.");
+                return;
+            }
+
             this.updateSimulateButtonState();
         },
+
+        // new:
+        // _fetchQuotationItems: function (sQuotation) {
+        //     var sQuotation = this.getView().getModel("viewModel").getProperty("/quotationNumber");
+        //     console.log(sQuotation);
+
+        //     if (!sQuotation) {
+        //         MessageBox.error("Please select a quotation number first.");
+        //         return;
+        //     }
+        //     var oFilter = new Filter("SalesQuotation", FilterOperator.EQ, sQuotation);
+        //     console.log(oFilter);
+
+
+        //     const oModel = this.getView().getModel("viewModel");
+        //     console.log(oModel.getData());
+        //     console.log(oModel);
+
+        //     if (!oModel) {
+        //         MessageToast.show("Error: OData model is not properly initialized.");
+        //         console.error("OData model is not initialized:", oModel);
+        //         return;
+        //     }
+        //     // Create a list binding for the Buildings entity
+        //     const oListBinding = oModel.bindList("/A_SalesQuotationItem");
+        //     console.log(oListBinding);
+
+
+        //     // Fetch the buildings
+        //     // oListBinding.requestContexts().then((aContexts) => {
+        //     //     // Map the contexts to a regions array
+        //     //     this._regions = aContexts.map(oContext => {
+        //     //         const oBuilding = oContext.getObject();
+        //     //         return {
+        //     //             name: oBuilding.name,
+        //     //             buildingID: oBuilding.ID,
+        //     //             xMin: oBuilding.xMin,
+        //     //             xMax: oBuilding.xMax,
+        //     //             yMin: oBuilding.yMin,
+        //     //             yMax: oBuilding.yMax
+        //     //         };
+        //     //         });
+
+
+        //     if (!this._oItemValueHelpDialog) {
+        //         this._oItemValueHelpDialog = new sap.m.Dialog({
+        //             title: "Select Item Number",
+        //             content: [
+        //                 new sap.m.Table({
+        //                     id: this.createId("itemTable"),
+        //                     mode: "SingleSelectMaster",
+        //                     growing: true,
+        //                     growingThreshold: 10,
+        //                     columns: [
+        //                         new sap.m.Column({ header: new sap.m.Label({ text: "Item Number" }) }),
+        //                         new sap.m.Column({ header: new sap.m.Label({ text: "Material" }) }),
+        //                         new sap.m.Column({ header: new sap.m.Label({ text: "Item Text" }) }),
+        //                         new sap.m.Column({ header: new sap.m.Label({ text: "WBS Element" }) }),
+        //                         new sap.m.Column({ header: new sap.m.Label({ text: "Rejection Reason" }) })
+        //                     ],
+        //                     items: {
+        //                         path: "/A_SalesQuotationItem",
+        //                         template: new sap.m.ColumnListItem({
+        //                             type: "Active",
+        //                             cells: [
+        //                                 new sap.m.Text({ text: "{SalesQuotationItem}" }),
+        //                                 new sap.m.Text({ text: "{Material}" }),
+        //                                 new sap.m.Text({ text: "{SalesQuotationItemText}" }),
+        //                                 new sap.m.Text({ text: "{WBSElement}" }),
+        //                                 new sap.m.Text({ text: "{SalesDocumentRjcnReason}" })
+        //                             ]
+        //                         }),
+        //                         parameters: {
+        //                             $count: true
+        //                         },
+        //                         events: {
+        //                             dataReceived: (oEvent) => {
+        //                                 const oTable = this.byId("itemTable");
+        //                                 const aItems = oTable.getItems();
+        //                                 const oContext = oEvent.getParameter("data");
+        //                                 console.log("Total items received for A_SalesQuotationItem:", aItems.length);
+        //                                 console.log("Total count from server:", oContext?.__count || "N/A");
+        //                                 if (aItems.length === 0) {
+        //                                     sap.m.MessageBox.warning("No items found for the selected quotation.");
+        //                                 }
+        //                             }
+        //                         }
+        //                     }
+        //                 })
+        //             ],
+        //             beginButton: new sap.m.Button({
+        //                 text: "Confirm",
+        //                 press: (oEvent) => {
+        //                     const oTable = this.byId("itemTable");
+        //                     const oSelectedItem = oTable.getSelectedItem();
+        //                     if (oSelectedItem) {
+        //                         const sItemNumber = oSelectedItem.getCells()[0].getText();
+        //                         this.byId("itemInput").setValue(sItemNumber);
+        //                         this.getView().getModel("viewModel").setProperty("/itemNumber", sItemNumber);
+        //                         this.updateServiceLinesTable();
+        //                         this.updateSimulateButtonState();
+        //                         this._oItemValueHelpDialog.close();
+        //                     }
+        //                 }
+        //             }),
+        //             endButton: new sap.m.Button({
+        //                 text: "Cancel",
+        //                 press: () => {
+        //                     this._oItemValueHelpDialog.close();
+        //                 }
+        //             })
+        //         });
+
+        //         var oODataModel = this.getOwnerComponent().getModel();
+        //         this._oItemValueHelpDialog.setModel(oODataModel);
+        //         this.getView().addDependent(this._oItemValueHelpDialog);
+        //     }
+        //     var oFilter = new Filter("SalesQuotation", FilterOperator.EQ, sQuotation);
+        //     this.byId("itemTable").getBinding("items").filter([oFilter]);
+        //     this._oItemValueHelpDialog.open();
+
+        // },
+
+        //Fetch as A NAV List 
+
+        // _fetchQuotationItems: function (sQuotation) {
+        //     var sQuotation = this.getView().getModel("viewModel").getProperty("/quotationNumber");
+        //     console.log(sQuotation);
+
+        //     if (!sQuotation) {
+        //         sap.m.MessageBox.error("Please select a quotation number first.");
+        //         return;
+        //     }
+        //     var oFilter = new sap.ui.model.Filter("SalesQuotation", sap.ui.model.FilterOperator.EQ, sQuotation);
+        //     console.log(oFilter);
+
+        //     const oModel = this.getView().getModel();
+        //     console.log(oModel.getData?.() || "No data available");
+        //     console.log(oModel);
+
+        //     if (!oModel) {
+        //         sap.m.MessageToast.show("Error: OData model is not properly initialized.");
+        //         console.error("OData model is not initialized:", oModel);
+        //         return;
+        //     }
+
+        //     if (!this._oItemValueHelpDialog) {
+        //         this._oItemValueHelpDialog = new sap.m.Dialog({
+        //             title: "Select Item Number",
+        //             contentWidth: "400px",
+        //             content: [
+        //                 new sap.tnt.NavigationList({
+        //                     id: this.createId("itemNavList"),
+        //                     selectedKey: "{viewModel>/selectedItemKey}",
+        //                     items: [
+        //                         new sap.tnt.NavigationListItem({
+        //                             text: "Transport",
+        //                             icon: "sap-icon://passenger-train"
+        //                         }),
+        //                         new sap.tnt.NavigationListGroup({
+        //                             id: this.createId("quotationItemsGroup"),
+        //                             text: "Quotation Items",
+        //                             visible: "{viewModel>/hasQuotationItems}",
+        //                             items: {
+        //                                 path: "/A_SalesQuotationItem",
+        //                                 template: new sap.tnt.NavigationListItem({
+        //                                     text: "{SalesQuotationItem}",
+        //                                     key: "{SalesQuotationItem}",
+        //                                     tooltip: "{= ${SalesQuotationItemText} + ' (' + ${Material} + ', WBS: ' + ${WBSElement} + ')' }",
+        //                                     icon: "sap-icon://product"
+        //                                 }),
+        //                                 parameters: {
+        //                                     $count: true
+        //                                 },
+        //                                 events: {
+        //                                     dataReceived: (oEvent) => {
+        //                                         const oGroup = this.byId("quotationItemsGroup");
+        //                                         const aItems = oGroup.getItems();
+        //                                         const oContext = oEvent.getParameter("data");
+        //                                         console.log("Total items received for A_SalesQuotationItem:", aItems.length);
+        //                                         console.log("Total count from server:", oContext?.__count || "N/A");
+        //                                         this.getView().getModel("viewModel").setProperty("/hasQuotationItems", aItems.length > 0);
+        //                                         if (aItems.length === 0) {
+        //                                             sap.m.MessageBox.warning("No items found for the selected quotation.");
+        //                                         }
+        //                                     }
+        //                                 }
+        //                             }
+        //                         })
+        //                     ],
+        //                     itemSelect: (oEvent) => {
+        //                         const oSelectedItem = oEvent.getParameter("item");
+        //                         const sItemNumber = oSelectedItem.getKey();
+        //                         if (sItemNumber) {
+        //                             this.byId("itemInput").setValue(sItemNumber);
+        //                             this.getView().getModel("viewModel").setProperty("/itemNumber", sItemNumber);
+        //                             this.getView().getModel("viewModel").setProperty("/selectedItemKey", sItemNumber);
+        //                             this.updateServiceLinesTable();
+        //                             this.updateSimulateButtonState();
+        //                             this._oItemValueHelpDialog.close();
+        //                         }
+        //                     }
+        //                 })
+        //             ],
+        //             beginButton: new sap.m.Button({
+        //                 text: "Confirm",
+        //                 press: () => {
+        //                     const oNavList = this.byId("itemNavList");
+        //                     const sItemNumber = oNavList.getSelectedKey();
+        //                     if (sItemNumber) {
+        //                         this.byId("itemInput").setValue(sItemNumber);
+        //                         this.getView().getModel("viewModel").setProperty("/itemNumber", sItemNumber);
+        //                         this.updateServiceLinesTable();
+        //                         this.updateSimulateButtonState();
+        //                         this._oItemValueHelpDialog.close();
+        //                     } else {
+        //                         sap.m.MessageToast.show("Please select an item.");
+        //                     }
+        //                 }
+        //             }),
+        //             endButton: new sap.m.Button({
+        //                 text: "Cancel",
+        //                 press: () => {
+        //                     this._oItemValueHelpDialog.close();
+        //                 }
+        //             })
+        //         });
+
+        //         var oODataModel = this.getOwnerComponent().getModel();
+        //         this._oItemValueHelpDialog.setModel(oODataModel);
+        //         this.getView().addDependent(this._oItemValueHelpDialog);
+        //     }
+
+        //     this.byId("quotationItemsGroup").getBinding("items").filter([oFilter]);
+        //     this._oItemValueHelpDialog.open();
+        // },
+        // _updateNavigationItems: function (aItems) {
+        //     var oViewModel = this.getView().getModel("viewModel");
+        //     oViewModel.setProperty("/quotationItems", aItems);
+        //     oViewModel.setProperty("/hasQuotationItems", aItems.length > 0);
+
+        //     // Refresh the binding to ensure the UI updates
+        //     var oNavGroup = this.byId("quotationItemsGroup");
+        //     oNavGroup.getBinding("items").refresh(true);
+        // },
+        // end new:
+
 
         onItemValueHelpRequest(oEvent) {
             var sQuotation = this.getView().getModel("viewModel").getProperty("/quotationNumber");
@@ -92,34 +515,82 @@ sap.ui.define([
             }
 
             if (!this._oItemValueHelpDialog) {
-                this._oItemValueHelpDialog = new SelectDialog({
+                this._oItemValueHelpDialog = new sap.m.Dialog({
                     title: "Select Item Number",
-                    items: {
-                        path: "/A_SalesQuotationItem",
-                        template: new sap.m.StandardListItem({
-                            title: "{SalesQuotationItem}",
-                            type: "Active"
+                    content: [
+                        new sap.m.Table({
+                            id: this.createId("itemTable"),
+                            mode: "SingleSelectMaster",
+                            growing: true,
+                            growingThreshold: 10,
+                            columns: [
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Item Number" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Material" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Item Text" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "WBS Element" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Rejection Reason" }) })
+                            ],
+                            items: {
+                                path: "/A_SalesQuotationItem",
+                                template: new sap.m.ColumnListItem({
+                                    type: "Active",
+                                    cells: [
+                                        new sap.m.Text({ text: "{SalesQuotationItem}" }),
+                                        new sap.m.Text({ text: "{Material}" }),
+                                        new sap.m.Text({ text: "{SalesQuotationItemText}" }),
+                                        new sap.m.Text({ text: "{WBSElement}" }),
+                                        new sap.m.Text({ text: "{SalesDocumentRjcnReason}" })
+                                    ]
+                                }),
+                                parameters: {
+                                    $count: true
+                                },
+                                events: {
+                                    dataReceived: (oEvent) => {
+                                        const oTable = this.byId("itemTable");
+                                        const aItems = oTable.getItems();
+                                        const oContext = oEvent.getParameter("data");
+                                        console.log("Total items received for A_SalesQuotationItem:", aItems.length);
+                                        console.log("Total count from server:", oContext?.__count || "N/A");
+                                        if (aItems.length === 0) {
+                                            sap.m.MessageBox.warning("No items found for the selected quotation.");
+                                        }
+                                    }
+                                }
+                            }
                         })
-                    },
-                    confirm: this.onItemValueHelpConfirm.bind(this)
+                    ],
+                    beginButton: new sap.m.Button({
+                        text: "Confirm",
+                        press: (oEvent) => {
+                            const oTable = this.byId("itemTable");
+                            const oSelectedItem = oTable.getSelectedItem();
+                            if (oSelectedItem) {
+                                const sItemNumber = oSelectedItem.getCells()[0].getText();
+                                this.byId("itemInput").setValue(sItemNumber);
+                                this.getView().getModel("viewModel").setProperty("/itemNumber", sItemNumber);
+                                this.updateServiceLinesTable();
+                                this.updateSimulateButtonState();
+                                this._oItemValueHelpDialog.close();
+                            }
+                        }
+                    }),
+                    endButton: new sap.m.Button({
+                        text: "Cancel",
+                        press: () => {
+                            this._oItemValueHelpDialog.close();
+                        }
+                    })
                 });
+
                 var oODataModel = this.getOwnerComponent().getModel();
                 this._oItemValueHelpDialog.setModel(oODataModel);
+                this.getView().addDependent(this._oItemValueHelpDialog);
             }
-            var oFilter = new Filter("SalesQuotation", FilterOperator.EQ, sQuotation);
-            this._oItemValueHelpDialog.getBinding("items").filter([oFilter]);
-            this._oItemValueHelpDialog.open();
-        },
 
-        onItemValueHelpConfirm(oEvent) {
-            var oSelectedItem = oEvent.getParameter("selectedItem");
-            if (oSelectedItem) {
-                var sItemNumber = oSelectedItem.getTitle();
-                this.byId("itemInput").setValue(sItemNumber);
-                this.getView().getModel("viewModel").setProperty("/itemNumber", sItemNumber);
-                this.updateServiceLinesTable();
-                this.updateSimulateButtonState();
-            }
+            var oFilter = new Filter("SalesQuotation", FilterOperator.EQ, sQuotation);
+            this.byId("itemTable").getBinding("items").filter([oFilter]);
+            this._oItemValueHelpDialog.open();
         },
 
         onItemQuotationSubmit(oEvent) {
@@ -153,9 +624,9 @@ sap.ui.define([
         updateSimulateButtonState() {
             const oViewModel = this.getView().getModel("viewModel").getData();
             const bEnabled = !!oViewModel.quotationNumber &&
-                            !!oViewModel.itemNumber &&
-                            !!oViewModel.selectedCategory &&
-                            !!oViewModel.selectedService;
+                !!oViewModel.itemNumber &&
+                !!oViewModel.selectedCategory &&
+                !!oViewModel.selectedService;
             this.getView().getModel("viewModel").setProperty("/simulateButtonEnabled", bEnabled);
         },
 
@@ -164,6 +635,7 @@ sap.ui.define([
 
             // Reset simulation data
             this.getView().getModel("viewModel").setProperty("/simulationData", []);
+            this.getView().getModel("viewModel").setProperty("/indirectCostData", []); // Reset Indirect Cost data
             this.getView().getModel("viewModel").setProperty("/totalAmount", "0.00");
 
             // Destroy existing dialog if it exists to ensure fresh content
@@ -179,6 +651,7 @@ sap.ui.define([
                 contentHeight: "400px",
                 content: new VBox({
                     items: [
+                        // E and D Table
                         new Table({
                             id: "simulationTable",
                             visible: sCategory === "EAndD",
@@ -193,7 +666,7 @@ sap.ui.define([
                                 path: "viewModel>/simulationData",
                                 template: new sap.m.ColumnListItem({
                                     cells: [
-                                        new Text({ text: "E and D" }), // Static for now
+                                        new Text({ text: "E and D" }),
                                         new Input({
                                             value: "{viewModel>Salary}",
                                             type: "Number",
@@ -218,13 +691,60 @@ sap.ui.define([
                                 })
                             }
                         }),
+                        // Indirect Cost Table
+                        new Table({
+                            id: "indirectCostTable",
+                            visible: sCategory === "IndirectCost",
+                            columns: [
+                                new Column({ header: new Text({ text: "Description" }) }),
+                                new Column({ header: new Text({ text: "Unit" }) }),
+                                new Column({ header: new Text({ text: "Qty" }) }),
+                                new Column({ header: new Text({ text: "Cost" }) }),
+                                new Column({ header: new Text({ text: "Labour" }) }),
+                                new Column({ header: new Text({ text: "Total (SAR)" }) })
+                            ],
+                            items: {
+                                path: "viewModel>/indirectCostData",
+                                template: new sap.m.ColumnListItem({
+                                    cells: [
+                                        new Input({
+                                            value: "{viewModel>Description}",
+                                            change: this.onIndirectCostInputChange.bind(this)
+                                        }),
+                                        new Input({
+                                            value: "{viewModel>Unit}",
+                                            change: this.onIndirectCostInputChange.bind(this)
+                                        }),
+                                        new Input({
+                                            value: "{viewModel>Qty}",
+                                            type: "Number",
+                                            change: this.onIndirectCostInputChange.bind(this)
+                                        }),
+                                        new Input({
+                                            value: "{viewModel>Cost}",
+                                            type: "Number",
+                                            change: this.onIndirectCostInputChange.bind(this)
+                                        }),
+                                        new Input({
+                                            value: "{viewModel>Labour}",
+                                            change: this.onIndirectCostInputChange.bind(this)
+                                        }),
+                                        new Input({
+                                            value: "{viewModel>Total}",
+                                            type: "Number",
+                                            change: this.onTotalDirectChange.bind(this)
+                                        })
+                                    ]
+                                })
+                            }
+                        }),
                         new Text({
-                            visible: sCategory !== "EAndD",
+                            visible: sCategory !== "EAndD" && sCategory !== "IndirectCost",
                             text: "This category is not available now and will be available shortly."
                         }),
                         new Label({
                             text: "Total Amount (SAR): {viewModel>/totalAmount}",
-                            visible: sCategory === "EAndD",
+                            visible: sCategory === "EAndD" || sCategory === "IndirectCost",
                             class: "sapUiSmallMarginTop"
                         })
                     ]
@@ -232,24 +752,33 @@ sap.ui.define([
                 beginButton: new Button({
                     text: "Save",
                     press: this.onSaveSimulation.bind(this),
-                    visible: sCategory === "EAndD"
+                    visible: sCategory === "EAndD" || sCategory === "IndirectCost"
                 }),
                 endButton: new Button({
                     text: "Add New Line",
                     press: this.onAddNewLine.bind(this),
-                    visible: sCategory === "EAndD"
+                    visible: sCategory === "EAndD" || sCategory === "IndirectCost"
                 })
             });
 
             this.getView().addDependent(this._oSimulationDialog);
 
-            // Add an initial empty row for E&D
+            // Add an initial empty row based on the selected category
             if (sCategory === "EAndD") {
                 this.getView().getModel("viewModel").setProperty("/simulationData", [{
                     Salary: "",
                     Months: "",
                     NoOfPersons: "",
                     Amount: ""
+                }]);
+            } else if (sCategory === "IndirectCost") {
+                this.getView().getModel("viewModel").setProperty("/indirectCostData", [{
+                    Description: "",
+                    Unit: "",
+                    Qty: "",
+                    Cost: "",
+                    Labour: "",
+                    Total: ""
                 }]);
             }
 
@@ -259,17 +788,14 @@ sap.ui.define([
         onSimulationInputChange(oEvent) {
             const oInput = oEvent.getSource();
             const oContext = oInput.getBindingContext("viewModel");
-            // Extract the index from the binding path (e.g., "/simulationData/0")
             const sPath = oContext.getPath();
             const iIndex = parseInt(sPath.split("/").pop(), 10);
             const oData = this.getView().getModel("viewModel").getProperty("/simulationData");
 
-            // Update the row data
             const salary = parseFloat(oData[iIndex].Salary) || 0;
             const months = parseFloat(oData[iIndex].Months) || 0;
             const noOfPersons = parseFloat(oData[iIndex].NoOfPersons) || 0;
 
-            // Calculate Amount if all inputs are provided
             if (salary && months && noOfPersons) {
                 const amount = (salary * months * noOfPersons).toFixed(2);
                 oData[iIndex].Amount = amount;
@@ -288,7 +814,6 @@ sap.ui.define([
             const iIndex = parseInt(sPath.split("/").pop(), 10);
             const oData = this.getView().getModel("viewModel").getProperty("/simulationData");
 
-            // Clear Salary, Months, and NoOfPersons if Amount is entered directly
             oData[iIndex].Salary = "";
             oData[iIndex].Months = "";
             oData[iIndex].NoOfPersons = "";
@@ -297,21 +822,79 @@ sap.ui.define([
             this.updateTotalAmount();
         },
 
+        onIndirectCostInputChange(oEvent) {
+            const oInput = oEvent.getSource();
+            const oContext = oInput.getBindingContext("viewModel");
+            const sPath = oContext.getPath();
+            const iIndex = parseInt(sPath.split("/").pop(), 10);
+            const oData = this.getView().getModel("viewModel").getProperty("/indirectCostData");
+
+            const qty = parseFloat(oData[iIndex].Qty) || 0;
+            const cost = parseFloat(oData[iIndex].Cost) || 0;
+
+            if (qty && cost) {
+                const total = (qty * cost).toFixed(2);
+                oData[iIndex].Total = total;
+            } else {
+                oData[iIndex].Total = "";
+            }
+
+            this.getView().getModel("viewModel").setProperty("/indirectCostData", oData);
+            this.updateTotalAmount();
+        },
+
+        onTotalDirectChange(oEvent) {
+            const oInput = oEvent.getSource();
+            const oContext = oInput.getBindingContext("viewModel");
+            const sPath = oContext.getPath();
+            const iIndex = parseInt(sPath.split("/").pop(), 10);
+            const oData = this.getView().getModel("viewModel").getProperty("/indirectCostData");
+
+            oData[iIndex].Qty = "";
+            oData[iIndex].Cost = "";
+
+            this.getView().getModel("viewModel").setProperty("/indirectCostData", oData);
+            this.updateTotalAmount();
+        },
+
         updateTotalAmount() {
-            const aData = this.getView().getModel("viewModel").getProperty("/simulationData");
-            const totalAmount = aData.reduce((sum, row) => sum + (parseFloat(row.Amount) || 0), 0).toFixed(2);
+            const sCategory = this.getView().getModel("viewModel").getProperty("/selectedCategory");
+            let totalAmount = 0;
+
+            if (sCategory === "EAndD") {
+                const aData = this.getView().getModel("viewModel").getProperty("/simulationData");
+                totalAmount = aData.reduce((sum, row) => sum + (parseFloat(row.Amount) || 0), 0).toFixed(2);
+            } else if (sCategory === "IndirectCost") {
+                const aData = this.getView().getModel("viewModel").getProperty("/indirectCostData");
+                totalAmount = aData.reduce((sum, row) => sum + (parseFloat(row.Total) || 0), 0).toFixed(2);
+            }
+
             this.getView().getModel("viewModel").setProperty("/totalAmount", totalAmount);
         },
 
         onAddNewLine() {
-            const aData = this.getView().getModel("viewModel").getProperty("/simulationData");
-            aData.push({
-                Salary: "",
-                Months: "",
-                NoOfPersons: "",
-                Amount: ""
-            });
-            this.getView().getModel("viewModel").setProperty("/simulationData", aData);
+            const sCategory = this.getView().getModel("viewModel").getProperty("/selectedCategory");
+            if (sCategory === "EAndD") {
+                const aData = this.getView().getModel("viewModel").getProperty("/simulationData");
+                aData.push({
+                    Salary: "",
+                    Months: "",
+                    NoOfPersons: "",
+                    Amount: ""
+                });
+                this.getView().getModel("viewModel").setProperty("/simulationData", aData);
+            } else if (sCategory === "IndirectCost") {
+                const aData = this.getView().getModel("viewModel").getProperty("/indirectCostData");
+                aData.push({
+                    Description: "",
+                    Unit: "",
+                    Qty: "",
+                    Cost: "",
+                    Labour: "",
+                    Total: ""
+                });
+                this.getView().getModel("viewModel").setProperty("/indirectCostData", aData);
+            }
         },
 
         onSaveSimulation() {
@@ -319,7 +902,6 @@ sap.ui.define([
             const oSelectedService = this.getView().getModel("viewModel").getProperty("/selectedService");
 
             if (oSelectedService) {
-                // Update the Gross Price of the selected service in the serviceLinesTable
                 const oServiceModel = this.getView().getModel("serviceModel");
                 const aServices = oServiceModel.getData();
                 const iIndex = aServices.findIndex(service =>
@@ -340,6 +922,11 @@ sap.ui.define([
             var sQuotation = this.getView().getModel("viewModel").getProperty("/quotationNumber");
             var sItemNumber = this.getView().getModel("viewModel").getProperty("/itemNumber");
 
+            console.log(sQuotation);
+            console.log(sItemNumber);
+            
+            
+
             var oTable = this.byId("serviceLinesTable");
 
             if (!sQuotation || !sItemNumber) {
@@ -347,17 +934,14 @@ sap.ui.define([
                 return;
             }
 
-            // Normalize sItemNumber by removing leading zeros
             const normalizedItemNumber = sItemNumber.replace(/^0+/, '') || sItemNumber;
 
-            // Step 1: Fetch BOS_CONDSet data using a direct HTTP request (preserving duplicates)
             const sCondUrl = `https://port4004-workspaces-ws-kgld4.us10.trial.applicationstudio.cloud.sap/odata/v4/zbtp-srvsample/BOS_CONDSet?$filter=Salesdocument eq '${sQuotation}'&$top=50`;
             jQuery.ajax({
                 url: sCondUrl,
                 method: "GET",
                 success: (oData) => {
                     if (oData.value && oData.value.length > 0) {
-                        // Filter client-side to match ItmNumber (keep duplicates), normalize ItmNumber
                         const aMatchingConds = oData.value.filter(cond => {
                             const normalizedCondItemNumber = cond.ItmNumber.replace(/^0+/, '') || cond.ItmNumber;
                             return normalizedCondItemNumber === normalizedItemNumber;
@@ -369,17 +953,14 @@ sap.ui.define([
                             return;
                         }
 
-                        // Get unique PckgNo values (duplicates in BOS_CONDSet don’t affect this)
                         const aPckgNos = [...new Set(aMatchingConds.map(cond => cond.PckgNo))];
 
-                        // Step 2: Fetch BOSSet data using a direct HTTP request
                         const sServiceUrl = `https://port4004-workspaces-ws-kgld4.us10.trial.applicationstudio.cloud.sap/odata/v4/zbtp-srvsample/BOSSet?$filter=Salesdocument eq '${sQuotation}'&$top=100`;
                         jQuery.ajax({
                             url: sServiceUrl,
                             method: "GET",
                             success: (oServiceData) => {
                                 if (oServiceData.value && oServiceData.value.length > 0) {
-                                    // Filter client-side to match PckgNo
                                     const aMatchingServices = oServiceData.value.filter(service => aPckgNos.includes(service.PckgNo));
 
                                     if (aMatchingServices.length === 0) {
@@ -388,14 +969,12 @@ sap.ui.define([
                                         return;
                                     }
 
-                                    // Bind filtered data to the table using a JSONModel
                                     const oServiceModel = new JSONModel(aMatchingServices);
                                     this.getView().setModel(oServiceModel, "serviceModel");
                                     oTable.bindRows({
                                         path: "serviceModel>/"
                                     });
 
-                                    // Attach row selection change event
                                     oTable.attachRowSelectionChange(this.onRowSelectionChange.bind(this));
                                 } else {
                                     oTable.bindRows({ path: "" });
@@ -416,71 +995,60 @@ sap.ui.define([
                 }
             });
         },
-        onSendToERP: async function() {
+
+        onSendToERP: async function () {
             try {
                 // 1. Get OData V4 model
                 const oModel = this.getView().getModel("ZBTP_POST_QUOT_SRVSampleService");
-                
+
                 // 2. Prepare dynamic payload
                 const oViewModel = this.getView().getModel("viewModel").getData();
                 const oServiceModel = this.getView().getModel("serviceModel");
                 const aServices = oServiceModel ? oServiceModel.getData() : [];
-        
+
                 if (!aServices.length) {
                     sap.m.MessageBox.error("No service data available to send to ERP.");
                     return;
                 }
-        
+
                 const payload = {
                     Salesdocument: oViewModel.quotationNumber,
                     headertoitem: []
                 };
-        
-                // aServices.forEach((selectedService, index) => {
-                    const item = {
-                        Salesdocument: oViewModel.quotationNumber,
-                        ItmNumber: oViewModel.itemNumber,
-                        Material: oViewModel.selectedService.Material,
-                        PckgNo: oViewModel.selectedService.PckgNo,
-                        LineNo: oViewModel.selectedService.LineNo,
-                        SubpckgNo: oViewModel.selectedService.SubpckgNo || "",
-                        Quantity: oViewModel.selectedService.Quantity || "",
-                        GrPrice: oViewModel.selectedService.GrPrice || ""
-                    };
-        
-                    // if (item.SubpckgNo) {
-                    //     const parentService = aServices.find(s => s.SubpckgNo === item.SubpckgNo);
-                    //     const parentPckgNo = parentService ? parentService.PckgNo : item.PckgNo;
-                    //     if (parentPckgNo && !payload.headertoitem.some(i => i.PckgNo === parentPckgNo)) {
-                    //         payload.headertoitem.push({
-                    //             Salesdocument: oViewModel.quotationNumber,
-                    //             ItmNumber: parentService.ItmNumber,
-                    //             Material: parentService.Material,
-                    //             PckgNo: parentPckgNo,
-                    //             LineNo: parentService.LineNo || "",
-                    //             SubpckgNo: "",
-                    //             Quantity: parentService.Quantity || "",
-                    //             GrPrice: parentService.GrPrice || ""
-                    //         });
-                    //     }
-                    // }
-        
-                    payload.headertoitem.push(item);
-                
-        
-                // 3. Use OData V4's `create` method correctly
-                const oBinding = oModel.bindList("/headerSet");
-                await oBinding.create(payload);
-        
-                // 4. Submit changes
-                await oModel.submitBatch("$auto");
-                
+
+                const item = {
+                    Salesdocument: oViewModel.quotationNumber,
+                    ItmNumber: oViewModel.itemNumber,
+                    Material: oViewModel.selectedService.Material,
+                    PckgNo: oViewModel.selectedService.PckgNo,
+                    LineNo: oViewModel.selectedService.LineNo,
+                    SubpckgNo: oViewModel.selectedService.SubpckgNo || "",
+                    Quantity: oViewModel.selectedService.Quantity || "",
+                    GrPrice: oViewModel.selectedService.GrPrice || ""
+                };
+
+                payload.headertoitem.push(item);
+
+                // 3. Create a fresh binding with a unique batch group
+                const sBatchGroupId = "sendToERPGroup_" + Date.now(); // Unique batch group for each call
+                const oBinding = oModel.bindList("/headerSet", null, null, null, { $$groupId: sBatchGroupId });
+
+                // 4. Create the entity
+                const oCreatedContext = await oBinding.create(payload);
+                console.log("Create operation initiated for payload:", payload);
+
+                // 5. Submit the batch and wait for completion
+                await oModel.submitBatch(sBatchGroupId).then(() => {
+                    console.log("Batch submitted successfully for group:", sBatchGroupId);
+                }, (oError) => {
+                    throw new Error("Batch submission failed: " + oError.message);
+                });
+
                 sap.m.MessageBox.success("Sent to ERP successfully!");
             } catch (error) {
                 sap.m.MessageBox.error("Failed: " + error.message);
                 console.error("ERP Submit Error:", error);
             }
         }
-        
     });
 });
