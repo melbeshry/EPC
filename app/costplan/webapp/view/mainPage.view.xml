@@ -44,24 +44,33 @@
             </form:SimpleForm>
             
             <Button id="_IDGenButton" text="Simulation" press=".onOpenSimulation" type="Emphasized" enabled="{viewModel>/simulateButtonEnabled}"
-                        class="sapUiSmallMarginTop"/>
+                        class="sapUiSmallMarginTop customButtonStyle" />
             <Button id="sendToERPButton" text="Send to ERP" press="onSendToERP" type="Emphasized" enabled="{viewModel>/simulateButtonEnabled}"
-                        class="sapUiSmallMarginTop"/>
+                        class="sapUiSmallMarginTop customButtonStyle"/>
 
 
 
         </content>
           </Panel>
-    
-	<TabContainer
-    items="{QuotationItemsModel>/quotationItemsNumbers}" id="myTabContainer" 
-					class="sapUiResponsiveContentPadding sapUiResponsivePadding--header"
-					 itemClose="itemCloseHandler"  itemSelect="onItemSelected">
-		<items >
-			<TabContainerItem id="_IDGenTabContainerItem1" name="{QuotationItemsModel>SalesQuotationItem}" modified="{modified}" >
-				<content>
-                
-                <table:Table id="serviceLinesTable" visible="true" width="auto" selectionMode="Single" class="sapUiSmallMarginTop">
+
+          <IconTabBar id="myIconTabBar"
+    items="{QuotationItemsModel>/quotationItemsNumbers}"
+    select="onIconTabSelect"
+    class="sapUiResponsiveContentPadding">
+
+    <items>
+        <IconTabFilter id="_IDGenIconTabFilter"
+            key="{QuotationItemsModel>SalesQuotationItem}"
+            text="Item {QuotationItemsModel>SalesQuotationItem}_{QuotationItemsModel>Material}">
+        </IconTabFilter>
+    </items>
+
+   
+</IconTabBar>
+
+<table:Table id="serviceLinesTable" visible="true" width="auto" selectionMode="Single" class="sapUiSmallMarginTop"
+  busy="{viewModel>/tableBusy}" 
+                         busyIndicatorDelay="0">
                         <table:columns>
                         <table:Column id="_IDGenColumn1">
                             <Label id="_IDGenLabel2" text="EXT Line"/>
@@ -106,18 +115,11 @@
                             </table:template>
                         </table:Column>
                     </table:columns>
-                </table:Table>
-				</content>
-			</TabContainerItem>
-		</items>
-	</TabContainer>
-                    
-                  
+                </table:Table>  
 
-
-
-       
     </Page>
 
 
 </mvc:View>
+
+

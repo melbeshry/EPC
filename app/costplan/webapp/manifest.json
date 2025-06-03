@@ -69,7 +69,8 @@
         "sap.f": {},
         "sap.ui.integration": {},
         "sap.ui.table": {},
-        "sap.fe.macros":{}
+        "sap.fe.macros":{},
+        "sap.ui.layout": {}
       }
     },
     "contentDensities": {
