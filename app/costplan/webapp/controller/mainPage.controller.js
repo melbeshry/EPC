@@ -18,8 +18,8 @@ sap.ui.define([
     "sap/ui/core/library",
     "sap/m/MessageToast",
 
-    "sap/ui/table/TreeTable", 
-    "sap/ui/table/Column" 
+    "sap/ui/table/TreeTable",
+    "sap/ui/table/Column"
 ], (Controller, JSONModel, SelectDialog, MessageToast, Filter, FilterOperator, MessageBox, jQuery, Dialog, Button, Table, Column, Text, Input, Label, VBox, coreLibrary, TreeTable) => {
     "use strict";
 
@@ -29,7 +29,7 @@ sap.ui.define([
                 quotationNumber: "",
                 itemNumber: "",
                 quotationItemsNumbers: [],
-                tableBusy: false, 
+                tableBusy: false,
                 categories: [
                     { key: "EAndD", text: "E and D" },
                     { key: "Material", text: "Material" },
@@ -38,6 +38,16 @@ sap.ui.define([
                     { key: "TAndCBOM", text: "T and C BOM" },
                     { key: "IndirectCost", text: "Indirect Cost" }
                 ],
+                Vendor_Details: [], // Array to store selected vendor keys
+                vendorOptions: [
+                    { key: "Siemens", text: "Siemens" },
+                    { key: "SEP", text: "SEP" },
+                    { key: "AlFanar", text: "Al Fanar" },
+                    { key: "ABB-JAL", text: "ABB-JAL" },
+                    { key: "JAL-Inhouse", text: "JAL-Inhouse" },
+                    { key: "Bahra", text: "Bahra" }
+                ],
+
                 selectedCategory: null,
                 selectedService: null,
                 simulateButtonEnabled: false,
@@ -347,7 +357,7 @@ sap.ui.define([
         // onOpenSimulation() {
         //     const sCategory = this.getView().getModel("viewModel").getProperty("/selectedCategory");
         //     console.log("category",sCategory);
-            
+
 
         //     // Reset simulation data
         //     this.getView().getModel("viewModel").setProperty("/simulationData", []);
@@ -507,20 +517,21 @@ sap.ui.define([
         onOpenSimulation: function () {
             const sCategory = this.getView().getModel("viewModel").getProperty("/selectedCategory");
             console.log("category", sCategory);
-        
+
             // Reset simulation data
             const oViewModel = this.getView().getModel("viewModel");
             oViewModel.setProperty("/simulationData", []);
             oViewModel.setProperty("/indirectCostData", []);
             oViewModel.setProperty("/materialData", []);
+            oViewModel.setProperty("/cablesData", []);
             oViewModel.setProperty("/totalAmount", "0.00");
-        
+
             // Destroy existing dialog if it exists
             if (this._oSimulationDialog) {
                 this._oSimulationDialog.destroy();
                 this._oSimulationDialog = null;
             }
-        
+
             // Build E and D Table
             const oEDTable = new sap.m.Table({
                 id: this.createId("simulationTable"),
@@ -561,7 +572,7 @@ sap.ui.define([
                     })
                 }
             });
-        
+
             // Build Indirect Cost Table
             const oIndirectTable = new sap.m.Table({
                 id: this.createId("indirectCostTable"),
@@ -611,7 +622,7 @@ sap.ui.define([
             });
 
             // Build Material Table
-              const oMaterialTable = new sap.m.Table({
+            const oMaterialTable = new sap.m.Table({
                 id: this.createId("materialTable"),
                 visible: sCategory === "Material",
                 columns: [
@@ -632,24 +643,24 @@ sap.ui.define([
                         cells: [
                             new sap.m.Input({
                                 value: "{viewModel>Description}",
-                               
+
                                 change: this.onMaterialInputChange.bind(this)
                             }),
                             // new sap.m.Input({
                             //     value: "{viewModel>Vendor_Details}",
-                               
+
                             //     change: this.onMaterialInputChange.bind(this)
                             // }),
-                            new sap.m.MultiComboBox({ 
-                                selectedKeys: "{viewModel>Vendor_Details}", 
+                            new sap.m.MultiComboBox({ // MultiComboBox for Vendor_Details
+                                selectedKeys: "{viewModel>Vendor_Details}", // Bind to array of selected keys
                                 items: {
-                                    path: "viewModel>/vendorOptions", // Bind to a list of available vendors
+                                    path: "viewModel>/vendorOptions", // Bind to static vendor options
                                     template: new sap.ui.core.ListItem({
-                                        key: "{VendorID}", 
-                                        text: "{VendorName}" 
+                                        key: "{viewModel>key}", // Use 'key' from vendorOptions
+                                        text: "{viewModel>text}" // Use 'text' from vendorOptions
                                     })
                                 },
-                                change: this.onMaterialInputChange.bind(this) 
+                                change: this.onMaterialInputChange.bind(this)
                             }),
                             new sap.m.Input({
                                 value: "{viewModel>Quotation_Date}",
@@ -663,7 +674,7 @@ sap.ui.define([
                             }),
                             new sap.m.Input({
                                 value: "{viewModel>Payment_Terms}",
-                                
+
                                 change: this.onMaterialInputChange.bind(this)
                             }),
                             new sap.m.Input({
@@ -673,12 +684,12 @@ sap.ui.define([
                             }),
                             new sap.m.Input({
                                 value: "{viewModel>Transportation_Charges}",
-                              
+
                                 change: this.onMaterialInputChange.bind(this)
                             }),
                             new sap.m.Input({
                                 value: "{viewModel>SABER}",
-                               
+
                                 change: this.onMaterialInputChange.bind(this)
                             }),
                             new sap.m.Input({
@@ -689,13 +700,75 @@ sap.ui.define([
                             new sap.m.Input({
                                 value: "{viewModel>Total_Price}",
                                 type: "Number",
-                                change: this.onTotalPriceChange.bind(this)
+                                change: this.onMaterialTotalPriceChange.bind(this)
                             })
                         ]
                     })
                 }
             });
-        
+
+            // Build Cables Table
+            const oCablesTable = new sap.m.Table({
+                id: this.createId("cablesTable"),
+                visible: sCategory === "Cables",
+                columns: [
+                    new sap.m.Column({ header: new sap.m.Text({ text: "Description" }) }),
+                    new sap.m.Column({ header: new sap.m.Text({ text: "Circuit" }) }),
+                    new sap.m.Column({ header: new sap.m.Text({ text: "Runs" }) }),
+                    new sap.m.Column({ header: new sap.m.Text({ text: "No of ph" }) }),
+                    new sap.m.Column({ header: new sap.m.Text({ text: "Approximate Meter" }) }),
+                    new sap.m.Column({ header: new sap.m.Text({ text: "Total" }) }),
+                    new sap.m.Column({ header: new sap.m.Text({ text: "Unit Price" }) }),
+                    new sap.m.Column({ header: new sap.m.Text({ text: "Total Price (SAR)" }) }),
+
+                ],
+                items: {
+                    path: "viewModel>/cablesData",
+                    template: new sap.m.ColumnListItem({
+                        cells: [
+                            new sap.m.Input({
+                                value: "{viewModel>Description}",
+                                change: this.onCablesInputChange.bind(this)
+                            }),
+                            new sap.m.Input({
+                                value: "{viewModel>Circuit}",
+                                type: "Number",
+                                change: this.onCablesInputChange.bind(this)
+                            }),
+                            new sap.m.Input({
+                                value: "{viewModel>Runs}",
+                                type: "Number",
+                                change: this.onCablesInputChange.bind(this)
+                            }),
+                            new sap.m.Input({
+                                value: "{viewModel>No_of_ph}",
+                                type: "Number",
+                                change: this.onCablesInputChange.bind(this)
+                            }),
+                            new sap.m.Input({
+                                value: "{viewModel>Approximate_Meter}",
+                                change: this.onCablesInputChange.bind(this)
+                            }),
+                            new sap.m.Input({
+                                value: "{viewModel>Total}",
+                                type: "Number",
+                                change: this.onCablesTotalPriceChange.bind(this)
+                            }),
+                            new sap.m.Input({
+                                value: "{viewModel>Unit_Price}",
+                                type: "Number",
+                                change: this.onCablesInputChange.bind(this)
+                            }),
+                            new sap.m.Input({
+                                value: "{viewModel>Total_Price}",
+                                type: "Number",
+                                change: this.onCablesTotalPriceChange.bind(this)
+                            })
+                        ]
+                    })
+                }
+            });
+
             // Create the dialog
             this._oSimulationDialog = new sap.m.Dialog({
                 title: "Simulation Table",
@@ -706,30 +779,31 @@ sap.ui.define([
                         oEDTable,
                         oIndirectTable,
                         oMaterialTable,
+                        oCablesTable,
                         new sap.m.Text({
-                            visible: sCategory !== "EAndD" && sCategory !== "IndirectCost" && sCategory !== "Material",
+                            visible: sCategory !== "EAndD" && sCategory !== "IndirectCost" && sCategory !== "Material" && sCategory !== "Cables",
                             text: "This category is not available now and will be available shortly."
                         }),
                         new sap.m.Label({
                             text: "Total Amount (SAR): {viewModel>/totalAmount}",
-                            visible: sCategory === "EAndD" || sCategory === "IndirectCost" || sCategory === "Material"
+                            visible: sCategory === "EAndD" || sCategory === "IndirectCost" || sCategory === "Material" || sCategory === "Cables"
                         }).addStyleClass("sapUiSmallMarginTop")
                     ]
                 }),
                 beginButton: new sap.m.Button({
                     text: "Save",
                     press: this.onSaveSimulation.bind(this),
-                    visible: sCategory === "EAndD" || sCategory === "IndirectCost" || sCategory === "Material"
+                    visible: sCategory === "EAndD" || sCategory === "IndirectCost" || sCategory === "Material" || sCategory === "Cables"
                 }),
                 endButton: new sap.m.Button({
                     text: "Add New Line",
                     press: this.onAddNewLine.bind(this),
-                    visible: sCategory === "EAndD" || sCategory === "IndirectCost" || sCategory === "Material"
+                    visible: sCategory === "EAndD" || sCategory === "IndirectCost" || sCategory === "Material" || sCategory === "Cables"
                 })
             });
-        
+
             this.getView().addDependent(this._oSimulationDialog);
-        
+
             // Add an initial empty row
             if (sCategory === "EAndD") {
                 oViewModel.setProperty("/simulationData", [{
@@ -747,21 +821,32 @@ sap.ui.define([
                     Labour: "",
                     Total: ""
                 }]);
-            } else if (sCategory === "Material"){
+            } else if (sCategory === "Material") {
                 oViewModel.setProperty("/materialData", [{
                     Description: "",
                     Vendor_Details: "",
                     Quotation_Date: "",
                     Quotation_Price: "",
                     Payment_Terms: "",
-                    Frieght_Clearance_Charges:"",
+                    Frieght_Clearance_Charges: "",
                     Transportation_Charges: "",
                     SABER: "",
                     Total_Sub_Charges: "",
                     Total_Price: ""
                 }]);
+            } else if (sCategory === "Cables") {
+                oViewModel.setProperty("/cablesData", [{
+                    Description: "",
+                    Circuit: "",
+                    Runs: "",
+                    No_of_ph: "",
+                    Approximate_Meter: "",
+                    Total: "",
+                    Unit_Price: "",
+                    Total_Price: ""
+                }]);
             }
-        
+
             this._oSimulationDialog.open();
         },
 
@@ -776,11 +861,17 @@ sap.ui.define([
             const iIndex = parseInt(sPath.split("/").pop(), 10);
             const oData = this.getView().getModel("viewModel").getProperty("/materialData");
 
+            const oMultiComboBox = oEvent.getSource();
+            const aSelectedKeys = oMultiComboBox.getSelectedKeys();
+            const oViewModel = this.getView().getModel("viewModel");
+            oViewModel.setProperty("/Vendor_Details", aSelectedKeys); // Update with selected keys
+            console.log("Selected Vendors:", aSelectedKeys);
 
-          
+
+
             oData[iIndex].Description = oData[iIndex].Description || "";
             oData[iIndex].Vendor_Details = oData[iIndex].Vendor_Details || "";
-            oData[iIndex].Quotation_Date =  oData[iIndex].Quotation_Date || "";
+            oData[iIndex].Quotation_Date = oData[iIndex].Quotation_Date || "";
             oData[iIndex].Quotation_Price = oData[iIndex].Quotation_Price || "";
             oData[iIndex].Payment_Terms = oData[iIndex].Payment_Terms || "";
             oData[iIndex].Frieght_Clearance_Charges = oData[iIndex].Frieght_Clearance_Charges || "";
@@ -794,7 +885,7 @@ sap.ui.define([
             this.updateTotalAmount();
         },
 
-        onTotalPriceChange(oEvent) {
+        onMaterialTotalPriceChange(oEvent) {
             const oInput = oEvent.getSource();
             const oContext = oInput.getBindingContext("viewModel");
             const sPath = oContext.getPath();
@@ -802,7 +893,7 @@ sap.ui.define([
             const oData = this.getView().getModel("viewModel").getProperty("/materialData");
 
             const quotation_Price = parseFloat(oData[iIndex].Quotation_Price) || 0;
-           
+
 
             if (quotation_Price) {
                 const total = quotation_Price.toFixed(2);
@@ -815,8 +906,84 @@ sap.ui.define([
             this.updateTotalAmount();
         },
 
-        ////
+        /*
+        for Cables */
+
+        onCablesInputChange(oEvent) {
+            const oInput = oEvent.getSource();
+            const oContext = oInput.getBindingContext("viewModel");
+            const sPath = oContext.getPath();
+            const iIndex = parseInt(sPath.split("/").pop(), 10);
+            const oData = this.getView().getModel("viewModel").getProperty("/cablesData");
+            
+            oData[iIndex].Description = oData[iIndex].Description || "";
+            oData[iIndex].Circuit = oData[iIndex].Circuit || "";
+            oData[iIndex].Runs = oData[iIndex].Runs || "";
+            oData[iIndex].No_of_ph = oData[iIndex].No_of_ph || "";
+            oData[iIndex].Approximate_Meter = oData[iIndex].Approximate_Meter || "";
+            oData[iIndex].Unit_Price = oData[iIndex].Unit_Price || "";
+            //TotalPrice Calculations
+            const circuit = parseFloat(oData[iIndex].Circuit) || 0;
+            const runs = parseFloat(oData[iIndex].Runs) || 0;
+            const noOfPh = parseFloat(oData[iIndex].No_of_ph) || 0;
+            const Approximate_Meter = parseFloat(oData[iIndex].Approximate_Meter) || 0;
+            const Unit_Price = parseFloat(oData[iIndex].Unit_Price) || 0;
+
+            if (circuit && runs && noOfPh && Approximate_Meter ) {
+                const total = (circuit * runs * noOfPh * Approximate_Meter ).toFixed(2);
+                oData[iIndex].Total = total;
+                if (Unit_Price){
+                    const total_price = (circuit * runs * noOfPh * Approximate_Meter * Unit_Price).toFixed(2);
+                oData[iIndex].Total_Price = total_price;
+                }
+                else {
+                    oData[iIndex].Total_Price = "";
+                }
+            } else {
+                oData[iIndex].Total = "";
+            }
+
+
+            this.getView().getModel("viewModel").setProperty("/cablesData", oData);
+            this.updateTotalAmount();
+        },
+
+        onCablesTotalPriceChange(oEvent) {
+            const oInput = oEvent.getSource();
+            const oContext = oInput.getBindingContext("viewModel");
+            const sPath = oContext.getPath();
+            const iIndex = parseInt(sPath.split("/").pop(), 10);
+            const oData = this.getView().getModel("viewModel").getProperty("/cablesData");
+
+             //TotalPrice Calculations
+             const circuit = parseFloat(oData[iIndex].Circuit) || 0;
+             const runs = parseFloat(oData[iIndex].Runs) || 0;
+             const noOfPh = parseFloat(oData[iIndex].No_of_ph) || 0;
+             const Approximate_Meter = parseFloat(oData[iIndex].Approximate_Meter) || 0;
+             const Unit_Price = parseFloat(oData[iIndex].Unit_Price) || 0;
+ 
+             if (circuit && runs && noOfPh && Approximate_Meter ) {
+                 const total = (circuit * runs * noOfPh * Approximate_Meter ).toFixed(2);
+                 oData[iIndex].Total = total;
+                 if (Unit_Price){
+                     const total_price = (circuit * runs * noOfPh * Approximate_Meter * Unit_Price).toFixed(2);
+                 oData[iIndex].Total_Price = total_price;
+                 }
+                 else {
+                     oData[iIndex].Total_Price = "";
+                 }
+             } else {
+                 oData[iIndex].Total = "";
+             }
+
+            this.getView().getModel("viewModel").setProperty("/cablesData", oData);
+            this.updateTotalAmount();
+        },
         
+
+        ////
+
+
         onSimulationInputChange(oEvent) {
             const oInput = oEvent.getSource();
             const oContext = oInput.getBindingContext("viewModel");
@@ -903,6 +1070,10 @@ sap.ui.define([
                 const aData = this.getView().getModel("viewModel").getProperty("/materialData");
                 totalAmount = aData.reduce((sum, row) => sum + (parseFloat(row.Total_Price) || 0), 0).toFixed(2);
             }
+            else if (sCategory === "Cables") {
+                const aData = this.getView().getModel("viewModel").getProperty("/cablesData");
+                totalAmount = aData.reduce((sum, row) => sum + (parseFloat(row.Total_Price) || 0), 0).toFixed(2);
+            }
 
 
             this.getView().getModel("viewModel").setProperty("/totalAmount", totalAmount);
@@ -930,6 +1101,34 @@ sap.ui.define([
                     Total: ""
                 });
                 this.getView().getModel("viewModel").setProperty("/indirectCostData", aData);
+            } else if (sCategory === "Material") {
+                const aData = this.getView().getModel("viewModel").getProperty("/materialData");
+                aData.push({
+                    Description: "",
+                    Vendor_Details: "",
+                    Quotation_Date: "",
+                    Quotation_Price: "",
+                    Payment_Terms: "",
+                    Frieght_Clearance_Charges: "",
+                    Transportation_Charges: "",
+                    SABER: "",
+                    Total_Sub_Charges: "",
+                    Total_Price: ""
+                });
+                this.getView().getModel("viewModel").setProperty("/materialData", aData);
+            } else if (sCategory === "Cables") {
+                const aData = this.getView().getModel("viewModel").getProperty("/cablesData");
+                aData.push({
+                    Description: "",
+                    Circuit: "",
+                    Runs: "",
+                    No_of_ph: "",
+                    Approximate_Meter: "",
+                    Total: "",
+                    Unit_Price: "",
+                    Total_Price: ""
+                });
+                this.getView().getModel("viewModel").setProperty("/cablesData", aData);
             }
         },
 
@@ -939,7 +1138,7 @@ sap.ui.define([
             const sCategory = this.getView().getModel("viewModel").getProperty("/selectedCategory");
             const oViewModel = this.getView().getModel("viewModel");
             const oODataModel = this.getView().getModel("odataV4Model");
-            
+
             /* end new*/
             const totalAmount = this.getView().getModel("viewModel").getProperty("/totalAmount");
             const oSelectedService = this.getView().getModel("viewModel").getProperty("/selectedService");
@@ -965,7 +1164,7 @@ sap.ui.define([
             var sQuotation = this.getView().getModel("viewModel").getProperty("/quotationNumber");
             var sItemNumber = this.getView().getModel("viewModel").getProperty("/itemNumber");
 
-            
+
 
             console.log(sQuotation);
             console.log(sItemNumber);
@@ -1039,8 +1238,8 @@ sap.ui.define([
 
                                             if (aMatchingServices.length === 0) {
                                                 oTable.bindRows({ path: "" });
-                                                
-                                            this.getView().getModel("viewModel").setProperty("/tableBusy", false);
+
+                                                this.getView().getModel("viewModel").setProperty("/tableBusy", false);
                                                 MessageBox.warning("No matching services found for the selected package.");
                                                 return;
                                             }
@@ -1058,7 +1257,7 @@ sap.ui.define([
                                             this.getView().getModel("viewModel").setProperty("/tableBusy", false);
                                         } else {
                                             oTable.bindRows({ path: "" });
-                                            
+
                                             this.getView().getModel("viewModel").setProperty("/tableBusy", false);
                                             MessageBox.warning("No services found for the selected quotation.");
                                         }
@@ -1072,7 +1271,7 @@ sap.ui.define([
                             oTable.bindRows({ path: "" });
                             this.getView().getModel("viewModel").setProperty("/tableBusy", false);
                             MessageBox.warning("No conditions found for the selected quotation.");
-                           
+
                         }
                     },
                     error: (oError) => {
