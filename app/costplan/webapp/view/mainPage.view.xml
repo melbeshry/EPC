@@ -39,12 +39,17 @@
                                   selectionChange=".onCategoryChange" class="sapUiSmallMarginBottom">
                             <core:Item id="_IDGenItem" key="{viewModel>key}" text="{viewModel>text}"/>
                         </ComboBox>
+                        <Input id="vendorInput" showValueHelp="true" valueHelpRequest=".onValueVendorsHelpRequest"
+                           placeholder="Enter or select quotation number"
+                           valueState="None" class="sapUiSmallMarginBottom" />
+                         
+                         
 
-                        
+<!--                         
                         <ComboBox id="vendorSelect" placeholder="Select Vendor" items="{viewModel>/vendorOptions}"
                                   selectionChange=".onCategoryChange" class="sapUiSmallMarginBottom">
                             <core:Item id="_IDGenItem2" key="{viewModel>key}" text="{viewModel>text}"/>
-                        </ComboBox>
+                        </ComboBox> -->
 
                 </form:content>
             </form:SimpleForm>

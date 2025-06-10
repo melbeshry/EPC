@@ -39,7 +39,16 @@
           "annotations": [],
           "odataVersion": "4.0"
         }
+      },
+      "ZAPI_BUSINESS_PARTNERSampleService":{
+        "uri": "/odata/v4/zapi-business-partnersample/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "odataVersion": "4.0"
+        }
       }
+      
     }
   },
   "sap.ui": {
@@ -109,6 +118,18 @@
       "ZBTP_POST_QUOT_SRVSampleService":{
         "type": "sap.ui.model.odata.v4.ODataModel",
         "dataSource": "ZBTP_POST_QUOT_SRVSampleService",
+        "preload": true,
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true,
+          "synchronizationMode": "None",
+          "groupId": "$auto"
+        }
+      },
+      "supplierModel":{
+        "type": "sap.ui.model.odata.v4.ODataModel",
+        "dataSource": "ZAPI_BUSINESS_PARTNERSampleService",
         "preload": true,
         "settings": {
           "operationMode": "Server",
