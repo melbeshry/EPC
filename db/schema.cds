@@ -3,18 +3,23 @@ namespace my.costplan;
 // E and D Category
 entity EngineeringDesignEntry {
   key ID           : UUID;
-//   Salesdocument    : String(20);
+    ShortText        : String(100);  // 👈 Add this line
+
+ Salesdocument    : String(20);
   ItemNumber       : String(10);
   Salary           : Decimal(13,2);
   Months           : Integer;
+
   NoOfPersons      : Integer;
-  Amount           : Decimal(15,2);
+  Amount           : Decimal(10,2);
   CreatedAt        : Timestamp;
 }
 
 // Indirect Cost Category
 entity IndirectCostEntry {
   key ID           : UUID;
+    ShortText        : String(100);  // 👈 Add this line
+
   Salesdocument    : String(20);
   ItemNumber       : String(10);
   Description      : String(100);
@@ -22,13 +27,15 @@ entity IndirectCostEntry {
   Qty              : Decimal(10,2);
   Cost             : Decimal(10,2);
   Labour           : String(50);
-  Total            : Decimal(15,2);
+  Total            : Decimal(4,2);
   CreatedAt        : Timestamp;
 }
 
 // Material Category
 entity MaterialEntry {
   key ID                     : UUID;
+    ShortText        : String(100);  // 👈 Add this line
+
   Salesdocument              : String(20);
   ItemNumber                 : String(10);
   Description                : String(100);
@@ -47,6 +54,7 @@ entity MaterialEntry {
 // Cables Category
 entity CablesEntry {
   key ID              : UUID;
+    ShortText        : String(100);  // 👈 Add this line
   Salesdocument       : String(20);
   ItemNumber          : String(10);
   Description         : String(100);

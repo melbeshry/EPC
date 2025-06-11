@@ -120,7 +120,7 @@
                         <table:Column id="_IDGenColumn6">
                             <Label id="_IDGenLabel7" text="Gross Price"/>
                             <table:template>
-                                <Text id="_IDGenText5" text="{simulationModel>GrPrice}"/>
+                                <Text id="_IDGenText5" text="{serviceModel>GrPrice}"/>
                             </table:template>
                         </table:Column>
                         <table:Column id="_IDGenColumn7">

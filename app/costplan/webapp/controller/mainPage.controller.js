@@ -216,7 +216,7 @@ sap.ui.define([
                         new sap.m.ComboBox({
                             id: this.createId("desComboBox"),
                             width: "100%",
-                            showSecondaryValues: true, 
+                            showSecondaryValues: true,
                             filterSuggest: true,
                             selectedKey: "{viewModel>/Description}",
                             items: {
@@ -257,12 +257,12 @@ sap.ui.define([
                             const oSelectedItem = oComboBox.getSelectedItem();
                             if (oSelectedItem) {
                                 const sSelectedText = oSelectedItem.getText();
-                                const oInput = oEvent.getSource(); 
+                                const oInput = oEvent.getSource();
                                 const oContext = oInput.getBindingContext("viewModel");
                                 if (oContext) {
                                     const sPath = oContext.getPath() + "/Description";
                                     this.getView().getModel("viewModel").setProperty(sPath, sSelectedText);
-                                    oInput.setValue(sSelectedText); 
+                                    oInput.setValue(sSelectedText);
                                     console.log("Selected Desc:", sSelectedText, "Path:", sPath);
                                 } else {
                                     console.warn("No binding context found for input");
@@ -438,7 +438,7 @@ sap.ui.define([
                                     oViewModel.setProperty("/materialData", aMaterialData);
                                 }
                                 this._oVendorValueHelpDialog.close();
-                                  
+
                             } else {
                                 sap.m.MessageBox.warning("Please select at least one vendor.");
                             }
@@ -896,12 +896,12 @@ sap.ui.define([
                 items: {
                     path: "viewModel>/materialData",
                     template: new sap.m.ColumnListItem({
-                       // type: "{viewModel>nodeType}" === "child" ? "Active" : "Navigation",
+                        // type: "{viewModel>nodeType}" === "child" ? "Active" : "Navigation",
                         cells: [
 
                             new Input({
                                 value: "{viewModel>Description}",
-                               editable: "{= ${nodeType} === 'parent'}",
+                                editable: "{= ${nodeType} === 'parent'}",
                                 change: this.onMaterialInputChange.bind(this)
                             }),
                             new Input({
@@ -1404,7 +1404,7 @@ sap.ui.define([
                 });
                 oViewModel.setProperty("/materialData", aMaterialData);
 
-               
+
 
                 // old --> worked
                 // const aData = this.getView().getModel("viewModel").getProperty("/materialData");
@@ -1437,36 +1437,36 @@ sap.ui.define([
             }
         },
 
-        onSaveSimulation() {
+        // onSaveSimulation() {
 
-            /* new*/
-            const sCategory = this.getView().getModel("viewModel").getProperty("/selectedCategory");
-            const oViewModel = this.getView().getModel("viewModel");
-            const oODataModel = this.getView().getModel("odataV4Model");
+        //     /* new*/
+        //     const sCategory = this.getView().getModel("viewModel").getProperty("/selectedCategory");
+        //     const oViewModel = this.getView().getModel("viewModel");
+        //     const oODataModel = this.getView().getModel("odataV4Model");
 
-            /* end new*/
-            const totalAmount = this.getView().getModel("viewModel").getProperty("/totalAmount");
-            const oSelectedService = this.getView().getModel("viewModel").getProperty("/selectedService");
+        //     /* end new*/
+        //     const totalAmount = this.getView().getModel("viewModel").getProperty("/totalAmount");
+        //     const oSelectedService = this.getView().getModel("viewModel").getProperty("/selectedService");
 
-            if (oSelectedService) {
-                const oServiceModel = this.getView().getModel("serviceModel");
-                const aServices = oServiceModel.getData();
-                const iIndex = aServices.findIndex(service =>
-                    service.ExtLine === oSelectedService.ExtLine &&
-                    service.ShortText === oSelectedService.ShortText
-                );
+        //     if (oSelectedService) {
+        //         const oServiceModel = this.getView().getModel("serviceModel");
+        //         const aServices = oServiceModel.getData();
+        //         const iIndex = aServices.findIndex(service =>
+        //             service.ExtLine === oSelectedService.ExtLine &&
+        //             service.ShortText === oSelectedService.ShortText
+        //         );
 
-                if (iIndex !== -1) {
-                    aServices[iIndex].GrPrice = totalAmount;
-                    oServiceModel.setData(aServices);
-                }
-            }
+        //         if (iIndex !== -1) {
+        //             aServices[iIndex].GrPrice = totalAmount;
+        //             oServiceModel.setData(aServices);
+        //         }
+        //     }
 
-            this._oSimulationDialog.close();
-        },
+        //     this._oSimulationDialog.close();
+        // },
 
 
-        //New Logic For SAVE Simulation
+        // New Logic For SAVE Simulation
         // onSaveSimulation: async function () {
         //     const sCategory = this.getView().getModel("viewModel").getProperty("/selectedCategory");
         //     const oViewModel = this.getView().getModel("viewModel");
@@ -1480,7 +1480,7 @@ sap.ui.define([
         //     switch (sCategory) {
         //         case "EAndD":
         //             aDataToSave = oViewModel.getProperty("/simulationData").map(row => ({
-        //                 Salesdocument: sSalesDoc,
+        //                 //Salesdocument: sSalesDoc,
         //                 ItemNumber: sItemNum,
         //                 Salary: row.Salary,
         //                 Months: row.Months,
@@ -1491,7 +1491,7 @@ sap.ui.define([
         //             break;
         //         case "IndirectCost":
         //             aDataToSave = oViewModel.getProperty("/indirectCostData").map(row => ({
-        //                 Salesdocument: sSalesDoc,
+        //                 // Salesdocument: sSalesDoc,
         //                 ItemNumber: sItemNum,
         //                 Description: row.Description,
         //                 Unit: row.Unit,
@@ -1504,7 +1504,7 @@ sap.ui.define([
         //             break;
         //         case "Material":
         //             aDataToSave = oViewModel.getProperty("/materialData").map(row => ({
-        //                 Salesdocument: sSalesDoc,
+        //                 //Salesdocument: sSalesDoc,
         //                 ItemNumber: sItemNum,
         //                 Description: row.Description,
         //                 VendorDetails: row.Vendor_Details,
@@ -1521,7 +1521,7 @@ sap.ui.define([
         //             break;
         //         case "Cables":
         //             aDataToSave = oViewModel.getProperty("/cablesData").map(row => ({
-        //                 Salesdocument: sSalesDoc,
+        //                 //Salesdocument: sSalesDoc,
         //                 ItemNumber: sItemNum,
         //                 Description: row.Description,
         //                 Circuit: row.Circuit,
@@ -1553,14 +1553,326 @@ sap.ui.define([
         //             await oBinding.create(row);
         //         }
 
-        //        // await oSimModel.submitBatch();
+        //         // await oSimModel.submitBatch();
         //         sap.m.MessageToast.show("Saved successfully to CAP.");
         //         this._oSimulationDialog.close();
         //     } catch (e) {
         //         sap.m.MessageBox.error("Save failed: " + e.message);
         //     }
-        // },
+        //     const oServiceModel = this.getView().getModel("serviceModel");
+        //     const aServices = oServiceModel.getData();
 
+        //     const sExtLine = oViewModel.getProperty("/selectedService/ExtLine"); // Or match using Salesdocument + ItemNumber
+
+        //     const iIndex = aServices.findIndex(service => service.ExtLine === sExtLine);
+        //     if (iIndex !== -1) {
+        //         aServices[iIndex].GrPrice = totalAmount; // totalAmount or your calculated total
+        //         oServiceModel.setData(aServices);
+        //         oServiceModel.refresh(true);
+        //     }
+       // },
+       
+
+       /*!   Worked Save Simulation Function {Store Data At Entities}       !*/ 
+        /*###  The Gross Price at refresh returned to the old Value  ###*/ 
+
+        onSaveSimulation: async function () {
+            const oView = this.getView();
+            const oViewModel = oView.getModel("viewModel");
+            const oSimModel = oView.getModel("simulationModel");
+            const oServiceModel = oView.getModel("serviceModel");
+        
+            const sCategory = oViewModel.getProperty("/selectedCategory");
+            const sSalesDoc = oViewModel.getProperty("/quotationNumber");
+            const sItemNum = oViewModel.getProperty("/itemNumber");
+            const sTimestamp = new Date().toISOString();
+            const oSelectedService = oViewModel.getProperty("/selectedService");
+        
+            let aDataToSave = [];
+            let totalAmount = 0;
+        
+            switch (sCategory) {
+                case "EAndD":
+                    aDataToSave = oViewModel.getProperty("/simulationData").map(row => {
+                        totalAmount += row.Amount;
+                        return {
+                            ShortText: oSelectedService.ShortText, 
+
+                            ItemNumber: sItemNum,
+                            Salary: row.Salary,
+                            Months: row.Months,
+                            NoOfPersons: row.NoOfPersons,
+                            Amount: row.Amount,
+                            CreatedAt: sTimestamp
+                        };
+                    });
+                    break;
+                case "IndirectCost":
+                    aDataToSave = oViewModel.getProperty("/indirectCostData").map(row => {
+                        totalAmount += row.Total;
+                        return {
+                            ShortText: oSelectedService.ShortText, // 👈 Set it from selected service
+
+                            ItemNumber: sItemNum,
+                            Description: row.Description,
+                            Unit: row.Unit,
+                            Qty: row.Qty,
+                            Cost: row.Cost,
+                            Labour: row.Labour,
+                            Total: row.Total,
+                            CreatedAt: sTimestamp
+                        };
+                    });
+                    break;
+                case "Material":
+                    aDataToSave = oViewModel.getProperty("/materialData").map(row => {
+                        totalAmount += row.Total_Price;
+                        return {
+                            ItemNumber: sItemNum,
+                            ShortText: oSelectedService.ShortText, // 👈 Set it from selected service
+
+                            Description: row.Description,
+                            VendorDetails: row.Vendor_Details,
+                            QuotationDate: row.Quotation_Date,
+                            QuotationPrice: row.Quotation_Price,
+                            PaymentTerms: row.Payment_Terms,
+                            FreightClearanceCharges: row.Frieght_Clearance_Charges,
+                            TransportationCharges: row.Transportation_Charges,
+                            Saber: row.SABER,
+                            TotalSubCharges: row.Total_Sub_Charges,
+                            TotalPrice: row.Total_Price,
+                            CreatedAt: sTimestamp
+                        };
+                    });
+                    break;
+                case "Cables":
+                    aDataToSave = oViewModel.getProperty("/cablesData").map(row => {
+                        totalAmount += row.Total_Price;
+                        return {
+                            ItemNumber: sItemNum,
+                            ShortText: oSelectedService.ShortText, // 👈 Set it from selected service
+
+                            Description: row.Description,
+                            Circuit: row.Circuit,
+                            Runs: row.Runs,
+                            NoOfPh: row.No_of_ph,
+                            ApproximateMeter: row.Approximate_Meter,
+                            Total: row.Total,
+                            UnitPrice: row.Unit_Price,
+                            TotalPrice: row.Total_Price,
+                            CreatedAt: sTimestamp
+                        };
+                    });
+                    break;
+                default:
+                    return sap.m.MessageBox.warning("Category not supported.");
+            }
+        
+            const entityMap = {
+                EAndD: "/EngineeringDesignEntry",
+                IndirectCost: "/IndirectCostEntry",
+                Material: "/MaterialEntry",
+                Cables: "/CablesEntry"
+            };
+        
+            try {
+                const sEntityPath = entityMap[sCategory];
+                const oBinding = oSimModel.bindList(sEntityPath, undefined, [], null, {
+                    $$groupId: "$direct"
+                });
+        
+                for (const row of aDataToSave) {
+                    await oBinding.create(row);
+                }
+        
+                // ✅ Update GrPrice in serviceModel
+                const aServices = oServiceModel.getData();
+                const iIndex = aServices.findIndex(service =>
+                    service.ExtLine === oSelectedService.ExtLine &&
+                    service.ShortText === oSelectedService.ShortText
+                );
+        
+                if (iIndex !== -1) {
+                    aServices[iIndex].GrPrice = totalAmount;
+                    oServiceModel.setData(aServices);
+                    oServiceModel.refresh(true);
+                }
+        
+                sap.m.MessageToast.show("Saved successfully to CAP and updated Gross Price.");
+                this._oSimulationDialog.close();
+            } catch (e) {
+                console.error(e);
+                sap.m.MessageBox.error("Save failed: " + e.message);
+            }
+        },
+        /*#$  Handling The Refresh Issue but needs addd update to service  ###*/ 
+
+        // onSaveSimulation: async function () {
+        //     const oView = this.getView();
+        //     const oViewModel = oView.getModel("viewModel");
+        //     const oSimModel = oView.getModel("simulationModel");
+        //     const oServiceModel = oView.getModel("serviceModel");
+        //     const oODataModel = oView.getModel("ZBTP_POST_QUOT_SRVSampleService");
+          
+        //     // Debug model
+        //     console.log("OData Model:", oODataModel);
+        //     // console.log("Model Type:", oODataModel.getMetadata ? oODataModel.getMetadata().getServiceMetadata() : "Not an OData model");
+          
+        //     const sCategory = oViewModel.getProperty("/selectedCategory");
+        //     const sSalesDoc = oViewModel.getProperty("/quotationNumber");
+        //     const sItemNum = oViewModel.getProperty("/itemNumber");
+        //     const sTimestamp = new Date().toISOString();
+        //     const oSelectedService = oViewModel.getProperty("/selectedService");
+          
+        //     let aDataToSave = [];
+        //     let totalAmount = 0;
+          
+        //     switch (sCategory) {
+        //       case "EAndD":
+        //         aDataToSave = oViewModel.getProperty("/simulationData").map(row => {
+        //           totalAmount += parseFloat(row.Amount) || 0;
+        //           return {
+        //             ShortText: oSelectedService.ShortText,
+        //             ItemNumber: sItemNum,
+        //             Salary: row.Salary,
+        //             Months: row.Months,
+        //             NoOfPersons: row.NoOfPersons,
+        //             Amount: row.Amount,
+        //             CreatedAt: sTimestamp
+        //           };
+        //         });
+        //         break;
+        //       case "IndirectCost":
+        //         aDataToSave = oViewModel.getProperty("/indirectCostData").map(row => {
+        //           totalAmount += parseFloat(row.Total) || 0;
+        //           return {
+        //             ShortText: oSelectedService.ShortText,
+        //             ItemNumber: sItemNum,
+        //             Description: row.Description,
+        //             Unit: row.Unit,
+        //             Qty: row.Qty,
+        //             Cost: row.Cost,
+        //             Labour: row.Labour,
+        //             Total: row.Total,
+        //             CreatedAt: sTimestamp
+        //           };
+        //         });
+        //         break;
+        //       case "Material":
+        //         aDataToSave = oViewModel.getProperty("/materialData").map(row => {
+        //           totalAmount += parseFloat(row.Total_Price) || 0;
+        //           return {
+        //             ShortText: oSelectedService.ShortText,
+        //             ItemNumber: sItemNum,
+        //             Description: row.Description,
+        //             VendorDetails: row.Vendor_Details,
+        //             QuotationDate: row.Quotation_Date,
+        //             QuotationPrice: row.Quotation_Price,
+        //             PaymentTerms: row.Payment_Terms,
+        //             FreightClearanceCharges: row.Frieght_Clearance_Charges,
+        //             TransportationCharges: row.Transportation_Charges,
+        //             Saber: row.SABER,
+        //             TotalSubCharges: row.Total_Sub_Charges,
+        //             TotalPrice: row.Total_Price,
+        //             CreatedAt: sTimestamp
+        //           };
+        //         });
+        //         break;
+        //       case "Cables":
+        //         aDataToSave = oViewModel.getProperty("/cablesData").map(row => {
+        //           totalAmount += parseFloat(row.Total_Price) || 0;
+        //           return {
+        //             ShortText: oSelectedService.ShortText,
+        //             ItemNumber: sItemNum,
+        //             Description: row.Description,
+        //             Circuit: row.Circuit,
+        //             Runs: row.Runs,
+        //             NoOfPh: row.No_of_ph,
+        //             ApproximateMeter: row.Approximate_Meter,
+        //             Total: row.Total,
+        //             UnitPrice: row.Unit_Price,
+        //             TotalPrice: row.Total_Price,
+        //             CreatedAt: sTimestamp
+        //           };
+        //         });
+        //         break;
+        //       default:
+        //         return sap.m.MessageBox.warning("Category not supported.");
+        //     }
+          
+        //     const entityMap = {
+        //       EAndD: "/EngineeringDesignEntry",
+        //       IndirectCost: "/IndirectCostEntry",
+        //       Material: "/MaterialEntry",
+        //       Cables: "/CablesEntry"
+        //     };
+          
+        //     try {
+        //       const sEntityPath = entityMap[sCategory];
+        //       const oBinding = oSimModel.bindList(sEntityPath, undefined, [], null, {
+        //         $$groupId: "$direct"
+        //       });
+          
+        //       for (const row of aDataToSave) {
+        //         await oBinding.create(row);
+        //       }
+          
+        //       // Update GrPrice in serviceModel and persist to backend
+        //       if (oSelectedService && sCategory === "EAndD") {
+        //         const aServices = oServiceModel.getData();
+        //         const iIndex = aServices.findIndex(service =>
+        //           service.ExtLine === oSelectedService.ExtLine &&
+        //           service.ShortText === oSelectedService.ShortText
+        //         );
+          
+        //         if (iIndex !== -1) {
+        //           aServices[iIndex].GrPrice = totalAmount.toFixed(2);
+        //           oServiceModel.setData(aServices);
+          
+        //           // Check if model supports V4 update
+        //           if (oODataModel.update) {
+        //             await oODataModel.update(`/BOSSet(Salesdocument='${sSalesDoc}',PckgNo='${oSelectedService.PckgNo}',LineNo='${oSelectedService.LineNo}')`, {
+        //               GrPrice: totalAmount.toFixed(2)
+        //             }, {
+        //               success: function () {
+        //                 console.log("GrPrice updated successfully in backend (V4)");
+        //                 oServiceModel.refresh(true);
+        //               },
+        //               error: function (oError) {
+        //                 console.error("Failed to update GrPrice (V4):", oError);
+        //                 sap.m.MessageBox.error("Failed to update Gross Price in backend.");
+        //               }
+        //             });
+        //           } else if (oODataModel.updateEntity) {
+        //             // Fallback for OData V2
+        //             oODataModel.updateEntity(
+        //               `/BOSSet(Salesdocument='${sSalesDoc}',PckgNo='${oSelectedService.PckgNo}',LineNo='${oSelectedService.LineNo}')`,
+        //               null,
+        //               { GrPrice: totalAmount.toFixed(2) },
+        //               {
+        //                 success: function (oData, response) {
+        //                   console.log("GrPrice updated successfully in backend (V2)", response);
+        //                   oServiceModel.refresh(true);
+        //                 },
+        //                 error: function (oError) {
+        //                   console.error("Failed to update GrPrice (V2):", oError);
+        //                   sap.m.MessageBox.error("Failed to update Gross Price in backend.");
+        //                 }
+        //               }
+        //             );
+        //           } else {
+        //             throw new Error("OData model does not support update operations.");
+        //           }
+        //         }
+        //       }
+          
+        //       sap.m.MessageToast.show("Saved successfully to CAP and updated Gross Price.");
+        //       this._oSimulationDialog.close();
+        //     } catch (e) {
+        //       console.error(e);
+        //       sap.m.MessageBox.error("Save failed: " + e.message);
+        //     }
+        //   },
         updateServiceLinesTable() {
             var sQuotation = this.getView().getModel("viewModel").getProperty("/quotationNumber");
             var sItemNumber = this.getView().getModel("viewModel").getProperty("/itemNumber");
