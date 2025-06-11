@@ -47,6 +47,22 @@
           "annotations": [],
           "odataVersion": "4.0"
         }
+      },
+      "ZAPI_PRODUCT_SRVSampleService":{
+        "uri": "/odata/v4/zapi-product-srvsample/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "odataVersion": "4.0"
+        }
+      },
+      "SimulationService":{
+        "uri": "/odata/v4/simulation/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "odataVersion": "4.0"
+        }
       }
       
     }
@@ -137,6 +153,31 @@
           "earlyRequests": true,
           "synchronizationMode": "None",
           "groupId": "$auto"
+        }
+      },
+      "productModel":{
+        "type": "sap.ui.model.odata.v4.ODataModel",
+        "dataSource": "ZAPI_PRODUCT_SRVSampleService",
+        "preload": true,
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true,
+          "synchronizationMode": "None",
+          "groupId": "$auto"
+        }
+      },
+      "simulationModel":{
+        "type": "sap.ui.model.odata.v4.ODataModel",
+        "dataSource": "SimulationService",
+        "preload": true,
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true,
+          "synchronizationMode": "None",
+          "groupId": "$direct",
+          "updateGroupId": "$direct"  
         }
       }
 

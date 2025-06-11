@@ -39,9 +39,13 @@
                                   selectionChange=".onCategoryChange" class="sapUiSmallMarginBottom">
                             <core:Item id="_IDGenItem" key="{viewModel>key}" text="{viewModel>text}"/>
                         </ComboBox>
-                        <Input id="vendorInput" showValueHelp="true" valueHelpRequest=".onValueVendorsHelpRequest"
-                           placeholder="Enter or select quotation number"
-                           valueState="None" class="sapUiSmallMarginBottom" />
+                                <!-- <Input id="vendorInput" showValueHelp="true" valueHelpRequest=".onValueVendorsHelpRequest"
+                                placeholder="Enter or select quotation number"
+                                valueState="None" class="sapUiSmallMarginBottom" /> -->
+
+                                <Input id="descInput" showValueHelp="true" valueHelpRequest=".onValueDescHelpRequest"
+                                placeholder="Enter or select desc"
+                                valueState="None" class="sapUiSmallMarginBottom" submit="onDescInputSubmit" />
                          
                          
 
@@ -116,7 +120,7 @@
                         <table:Column id="_IDGenColumn6">
                             <Label id="_IDGenLabel7" text="Gross Price"/>
                             <table:template>
-                                <Text id="_IDGenText5" text="{serviceModel>GrPrice}"/>
+                                <Text id="_IDGenText5" text="{simulationModel>GrPrice}"/>
                             </table:template>
                         </table:Column>
                         <table:Column id="_IDGenColumn7">
