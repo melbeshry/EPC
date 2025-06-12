@@ -1372,11 +1372,7 @@ sap.ui.define([
             this.getView().getModel("viewModel").setProperty("/cablesData", oData);
             this.updateTotalAmount();
         },
-
-
         ////
-
-
         onSimulationInputChange(oEvent) {
             const oInput = oEvent.getSource();
             const oContext = oInput.getBindingContext("viewModel");
