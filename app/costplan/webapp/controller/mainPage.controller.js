@@ -1695,11 +1695,8 @@ sap.ui.define([
                 ]
             });
         },
-        /*
-        for material
-        
-        */
-        /**Working Function */
+        /* for material*/
+        /** Working Function */
         // onMaterialInputChange(oEvent) {
         //     const oInput = oEvent.getSource();
         //     const oContext = oInput.getBindingContext("viewModel");
@@ -2048,34 +2045,100 @@ sap.ui.define([
             }
         },
         // OLD SAVE SIMULATION LOGIC 
-        onSaveSimulation() {
+        // onSaveSimulation() {
 
-            /* new*/
-            const sCategory = this.getView().getModel("viewModel").getProperty("/selectedCategory");
+        //     /* new*/
+        //     const sCategory = this.getView().getModel("viewModel").getProperty("/selectedCategory");
+        //     const oViewModel = this.getView().getModel("viewModel");
+        //     const oODataModel = this.getView().getModel("odataV4Model");
+
+        //     /* end new*/
+        //     const totalAmount = this.getView().getModel("viewModel").getProperty("/totalAmount");
+        //     const oSelectedService = this.getView().getModel("viewModel").getProperty("/selectedService");
+
+        //     if (oSelectedService) {
+        //         const oServiceModel = this.getView().getModel("serviceModel");
+        //         const aServices = oServiceModel.getData();
+        //         const iIndex = aServices.findIndex(service =>
+        //             service.ExtLine === oSelectedService.ExtLine &&
+        //             service.ShortText === oSelectedService.ShortText
+        //         );
+
+        //         if (iIndex !== -1) {
+        //             aServices[iIndex].GrPrice = totalAmount;
+        //             oServiceModel.setData(aServices);
+        //         }
+        //     }
+
+        //     this._oSimulationDialog.close();
+        // },
+        //Save Sim With a validation of empty rows or not...
+        onSaveSimulation: function () {
             const oViewModel = this.getView().getModel("viewModel");
+            const sCategory = oViewModel.getProperty("/selectedCategory");
             const oODataModel = this.getView().getModel("odataV4Model");
-
-            /* end new*/
-            const totalAmount = this.getView().getModel("viewModel").getProperty("/totalAmount");
-            const oSelectedService = this.getView().getModel("viewModel").getProperty("/selectedService");
-
-            if (oSelectedService) {
-                const oServiceModel = this.getView().getModel("serviceModel");
-                const aServices = oServiceModel.getData();
-                const iIndex = aServices.findIndex(service =>
-                    service.ExtLine === oSelectedService.ExtLine &&
-                    service.ShortText === oSelectedService.ShortText
-                );
-
-                if (iIndex !== -1) {
-                    aServices[iIndex].GrPrice = totalAmount;
-                    oServiceModel.setData(aServices);
-                }
+            const totalAmount = oViewModel.getProperty("/totalAmount");
+            const oSelectedService = oViewModel.getProperty("/selectedService");
+        
+            const aSimulationData = oViewModel.getProperty("/simulationData") || [];
+            const aIndirectCostData = oViewModel.getProperty("/indirectCostData") || [];
+            const aMaterialData = oViewModel.getProperty("/materialData") || [];
+            const aCablesData = oViewModel.getProperty("/cablesData") || [];
+        
+            const isEmptySimulation = aSimulationData.length === 0 || aSimulationData.every(item => 
+                !item.Salary && !item.Months && !item.NoOfPersons && !item.Amount
+            );
+            const isEmptyIndirectCost = aIndirectCostData.length === 0 || aIndirectCostData.every(item => 
+                !item.Description && !item.Unit && !item.Qty && !item.Cost && !item.Labour && !item.Total
+            );
+            const isEmptyMaterial = aMaterialData.length === 0 || aMaterialData.every(item => 
+                !item.Description && !item.Vendor_Details && !item.Quotation_Date && !item.Quotation_Price && 
+                !item.Payment_Terms && !item.Freight_Clearance_Charges && !item.Transportation_Charges && 
+                !item.SABER && !item.Total_Sub_Charges && !item.Total_Price
+            );
+            const isEmptyCables = aCablesData.length === 0 || aCablesData.every(item => 
+                !item.Description && !item.Circuit && !item.Runs && !item.No_of_ph && !item.Approximate_Meter && 
+                !item.Total && !item.Unit_Price && !item.Total_Price
+            );
+        
+            const isCurrentTableEmpty = 
+                (sCategory === "EAndD" && isEmptySimulation) ||
+                (sCategory === "IndirectCost" && isEmptyIndirectCost) ||
+                (sCategory === "Material" && isEmptyMaterial) ||
+                (sCategory === "Cables" && isEmptyCables);
+        
+            if (isCurrentTableEmpty) {
+                sap.m.MessageBox.warning("No values saved. The table is empty or contains no valid data.", {
+                    title: "Empty Table",
+                    onClose: () => {
+                    }
+                });
+                return; 
             }
-
-            this._oSimulationDialog.close();
+        
+           
+        
+            this._performSave(oViewModel, oSelectedService, totalAmount);
         },
-
+        
+        _performSave: function (oViewModel, oSelectedService, totalAmount) {
+            const oServiceModel = this.getView().getModel("serviceModel");
+            const aServices = oServiceModel.getData();
+            const iIndex = aServices.findIndex(service =>
+                service.ExtLine === oSelectedService.ExtLine &&
+                service.ShortText === oSelectedService.ShortText
+            );
+        
+            if (iIndex !== -1) {
+                aServices[iIndex].GrPrice = totalAmount;
+                oServiceModel.setData(aServices);
+            }
+        
+            this._oSimulationDialog.close();
+            sap.m.MessageBox.success("Simulation data saved successfully.", {
+                title: "Success"
+            });
+        },
 
         // New Logic For SAVE Simulation
         // onSaveSimulation: async function () {
