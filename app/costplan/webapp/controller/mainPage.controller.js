@@ -652,111 +652,6 @@ sap.ui.define([
                 !!oViewModel.selectedService;
             this.getView().getModel("viewModel").setProperty("/simulateButtonEnabled", bEnabled);
         },
-        onConfirmVendorSelection: function () {
-            const oViewModel = this.getView().getModel("viewModel");
-            const aVendors = oViewModel.getProperty("/materialData");
-
-            if (!aVendors.length) {
-                return sap.m.MessageBox.warning("No vendor entries available to confirm.");
-            }
-
-            // Group vendors by Description
-            const groupedByMaterial = {};
-            aVendors.forEach((vendor, idx) => {
-                const key = vendor.Description || "Unknown Material";
-                if (!groupedByMaterial[key]) groupedByMaterial[key] = [];
-                groupedByMaterial[key].push({ ...vendor, index: idx });
-            });
-
-            const oVBox = new sap.m.VBox({ renderType: "Bare" });
-            const mRadioGroups = {}; // Store radio groups per material
-
-            Object.keys(groupedByMaterial).forEach(materialDesc => {
-                oVBox.addItem(new sap.m.Label({ text: "Material: " + materialDesc, design: "Bold" }));
-
-                const oRadioGroup = new sap.m.RadioButtonGroup({
-                    columns: 1
-                });
-
-                groupedByMaterial[materialDesc].forEach(vendor => {
-                    const oRadioButton = new sap.m.RadioButton({
-                        text: `Vendor: ${vendor.Vendor_Details} | Price: ${vendor.Quotation_Price || 'N/A'}`,
-                        customData: [
-                            new sap.ui.core.CustomData({
-                                key: "vendorIndex",
-                                value: vendor.index
-                            })
-                        ]
-                    });
-                    oRadioGroup.addButton(oRadioButton);
-                });
-
-                mRadioGroups[materialDesc] = {
-                    group: oRadioGroup,
-                    vendors: groupedByMaterial[materialDesc]
-                };
-
-                oVBox.addItem(oRadioGroup);
-            });
-
-            const oDialog = new sap.m.Dialog({
-                title: "Confirm Vendors",
-                contentWidth: "600px",
-                content: [oVBox],
-                beginButton: new sap.m.Button({
-                    text: "Confirm",
-                    press: () => {
-                        const aMaterialData = oViewModel.getProperty("/materialData");
-                        let totalAmount = 0;
-
-                        Object.keys(mRadioGroups).forEach(material => {
-                            const { group, vendors } = mRadioGroups[material];
-                            const iSelectedIdx = group.getSelectedIndex();
-
-                            if (iSelectedIdx > -1) {
-                                const selectedVendor = vendors[iSelectedIdx];
-                                vendors.forEach(v => {
-                                    const isSelected = v.index === selectedVendor.index;
-                                    aMaterialData[v.index].Total_Price = isSelected ? v.Quotation_Price : "";
-                                    if (isSelected && v.Quotation_Price) {
-                                        totalAmount += parseFloat(v.Quotation_Price);
-                                    }
-                                });
-                            }
-                        });
-
-                        oViewModel.setProperty("/materialData", aMaterialData);
-                        oViewModel.setProperty("/totalAmount", totalAmount.toFixed(2));
-
-                        // Optional: Update service model Gross Price
-                        const oServiceModel = this.getView().getModel("serviceModel");
-                        const oServiceData = oServiceModel?.getProperty("/serviceLines/0");
-                        if (oServiceData) {
-                            oServiceData.GrPrice = totalAmount.toFixed(2);
-                            oServiceModel.setProperty("/serviceLines/0", oServiceData);
-                        }
-
-                        // ✅ Show success message
-                        sap.m.MessageBox.success("Vendor selection confirmed successfully.", {
-                            title: "Success",
-                            onClose: () => {
-                                oDialog.close();
-                            }
-                        });
-                    }
-                }),
-                endButton: new sap.m.Button({
-                    text: "Cancel",
-                    press: () => oDialog.close()
-                })
-            });
-
-            this.getView().addDependent(oDialog);
-            oDialog.open();
-        },
-
-
-
         /* new simulation func:*/
         // onOpenSimulation: async function () {
         //     const sCategory = this.getView().getModel("viewModel").getProperty("/selectedCategory");
@@ -1437,7 +1332,91 @@ sap.ui.define([
 
         //     this._oSimulationDialog.open();
         // },
+        onConfirmVendorSelection: function () {
+            const oViewModel = this.getView().getModel("viewModel");
+            const aVendors = oViewModel.getProperty("/materialData");
 
+            if (!aVendors.length) {
+                return sap.m.MessageBox.warning("No vendor entries available to confirm.");
+            }
+
+            const oVBox = new sap.m.VBox({ renderType: "Bare" });
+            const aSelectedIndices = []; // To store indices of selected vendors
+            let totalAmount = 0;
+
+            // Create a list of all vendors (ignoring material grouping for multi-selection)
+            aVendors.forEach((vendor, idx) => {
+                const oCheckBox = new sap.m.CheckBox({
+                    text: `Material: ${vendor.Description || 'Unknown'} | Vendor: ${vendor.Vendor_Details || 'N/A'} | Price: ${vendor.Quotation_Price || 'N/A'}`,
+                    customData: [
+                        new sap.ui.core.CustomData({
+                            key: "vendorIndex",
+                            value: idx
+                        })
+                    ],
+                    select: (oEvent) => {
+                        const bSelected = oEvent.getParameter("selected");
+                        if (bSelected) {
+                            aSelectedIndices.push(idx);
+                            if (vendor.Quotation_Price) {
+                                totalAmount += parseFloat(vendor.Quotation_Price) || 0;
+                            }
+                        } else {
+                            const indexToRemove = aSelectedIndices.indexOf(idx);
+                            if (indexToRemove > -1) {
+                                aSelectedIndices.splice(indexToRemove, 1);
+                                if (vendor.Quotation_Price) {
+                                    totalAmount -= parseFloat(vendor.Quotation_Price) || 0;
+                                }
+                            }
+                        }
+                        oViewModel.setProperty("/totalAmount", totalAmount.toFixed(2));
+                    }
+                });
+                oVBox.addItem(oCheckBox);
+            });
+
+            const oDialog = new sap.m.Dialog({
+                title: "Confirm Vendors",
+                contentWidth: "600px",
+                content: [oVBox],
+                beginButton: new sap.m.Button({
+                    text: "Confirm",
+                    press: () => {
+                        const aMaterialData = oViewModel.getProperty("/materialData");
+
+                        // Update Total_Price for selected vendors only
+                        aMaterialData.forEach((vendor, idx) => {
+                            vendor.Total_Price = aSelectedIndices.includes(idx) && vendor.Quotation_Price ? vendor.Quotation_Price : "";
+                        });
+
+                        oViewModel.setProperty("/materialData", aMaterialData);
+                        oViewModel.setProperty("/totalAmount", totalAmount.toFixed(2));
+
+                        // Optional: Update service model Gross Price
+                        const oServiceModel = this.getView().getModel("serviceModel");
+                        const oServiceData = oServiceModel?.getProperty("/serviceLines/0");
+                        if (oServiceData) {
+                            oServiceData.GrPrice = totalAmount.toFixed(2);
+                            oServiceModel.setProperty("/serviceLines/0", oServiceData);
+                        }
+
+                        // Show success message
+                        sap.m.MessageBox.success("Vendor selection confirmed successfully.", {
+                            title: "Success",
+                            onClose: () => oDialog.close()
+                        });
+                    }
+                }),
+                endButton: new sap.m.Button({
+                    text: "Cancel",
+                    press: () => oDialog.close()
+                })
+            });
+
+            this.getView().addDependent(oDialog);
+            oDialog.open();
+        },
         onOpenSimulation: async function () {
             const oView = this.getView();
             const oViewModel = oView.getModel("viewModel");
@@ -1479,7 +1458,8 @@ sap.ui.define([
                             new sap.m.Input({
                                 editable: false,
 
-                                 value: "{viewModel>Amount}", type: "Number", change: this.onAmountDirectChange.bind(this) })
+                                value: "{viewModel>Amount}", type: "Number", change: this.onAmountDirectChange.bind(this)
+                            })
                         ]
                     })
                 }
@@ -1506,8 +1486,9 @@ sap.ui.define([
                             new sap.m.Input({ value: "{viewModel>Cost}", type: "Number", change: this.onIndirectCostInputChange.bind(this) }),
                             new sap.m.Input({ value: "{viewModel>Labour}", change: this.onIndirectCostInputChange.bind(this) }),
                             new sap.m.Input({
-                                editable: false, 
-                                 value: "{viewModel>Total}", type: "Number", change: this.onTotalDirectChange.bind(this) })
+                                editable: false,
+                                value: "{viewModel>Total}", type: "Number", change: this.onTotalDirectChange.bind(this)
+                            })
                         ]
                     })
                 }
@@ -1607,9 +1588,9 @@ sap.ui.define([
                             new sap.m.Input({ value: "{viewModel>Runs}", type: "Number", change: this.onCablesInputChange.bind(this) }),
                             new sap.m.Input({ value: "{viewModel>No_of_ph}", type: "Number", change: this.onCablesInputChange.bind(this) }),
                             new sap.m.Input({ value: "{viewModel>Approximate_Meter}", change: this.onCablesInputChange.bind(this) }),
-                            new sap.m.Input({editable: false,  value: "{viewModel>Total}", type: "Number", change: this.onCablesTotalPriceChange.bind(this) }),
+                            new sap.m.Input({ editable: false, value: "{viewModel>Total}", type: "Number", change: this.onCablesTotalPriceChange.bind(this) }),
                             new sap.m.Input({ value: "{viewModel>Unit_Price}", type: "Number", change: this.onCablesInputChange.bind(this) }),
-                            new sap.m.Input({ editable: false,  value: "{viewModel>Total_Price}", type: "Number", change: this.onCablesTotalPriceChange.bind(this) })
+                            new sap.m.Input({ editable: false, value: "{viewModel>Total_Price}", type: "Number", change: this.onCablesTotalPriceChange.bind(this) })
                         ]
                     })
                 }
@@ -1664,8 +1645,6 @@ sap.ui.define([
 
             this._oSimulationDialog.open();
         },
-
-
         _createMaterialRow: function (sId, oContext) {
             return new sap.m.ColumnListItem({
                 cells: [

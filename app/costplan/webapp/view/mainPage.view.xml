@@ -42,11 +42,11 @@
                                 <!-- <Input id="vendorInput" showValueHelp="true" valueHelpRequest=".onValueVendorsHelpRequest"
                                 placeholder="Enter or select quotation number"
                                 valueState="None" class="sapUiSmallMarginBottom" /> -->
-
+<!-- 
                                 <Input id="descInput" showValueHelp="true" valueHelpRequest=".onValueDescHelpRequest"
                                 placeholder="Enter or select desc"
                                 valueState="None" class="sapUiSmallMarginBottom" submit="onDescInputSubmit" />
-                         
+                          -->
                          
 
 <!--                         
