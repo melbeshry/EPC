@@ -629,7 +629,8 @@ sap.ui.define([
         },
 
         onCategoryChange(oEvent) {
-            const sSelectedKey = oEvent.getSource().getSelectedKey();
+           // const sSelectedKey = oEvent.getSource().getSelectedKey();
+           const sSelectedKey = oEvent.getParameter("item").getKey(); // For TabContainer
             this.getView().getModel("viewModel").setProperty("/selectedCategory", sSelectedKey);
             this.updateSimulateButtonState();
         },
