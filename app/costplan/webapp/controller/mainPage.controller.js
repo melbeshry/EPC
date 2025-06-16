@@ -354,6 +354,7 @@ sap.ui.define([
         //     }
         //     this._oDescValueHelpDialog.open();
         // },
+       
         async onValueDescHelpRequest(oEvent) {
             const oInput = oEvent.getSource();
             const sCurrentValue = oInput.getValue();
@@ -1789,7 +1790,7 @@ sap.ui.define([
 
                 columns: [
                     "Material", "Vendor Details", "Quotation Date", "Quotation Price", "Payment Terms",
-                    "Freight & Clearance Charges (17%)", "Transportation Charges", "SABER", "Total Sub-Charges"
+                    "Freight & Clearance Charges (17%)", "Transportation Charges", "SABER", "Total Sub-Charges","Total Price"
                 ].map(text => new sap.m.Column({
                     header: new sap.m.Text({ text }),
                     //hAlign: "Center",
@@ -1798,91 +1799,7 @@ sap.ui.define([
                 })),
                 items: {
                     path: "viewModel>/materialData",
-                    factory: this._createMaterialRow.bind(this)
-                    // template: new sap.m.ColumnListItem({
-                    //     cells: [
-                    //         new sap.m.Input({
-                    //             placeholder: "Select Material Description",
-                    //             showValueHelp: true,
-                    //             required: true,
-                    //             //width: "300px",
-                    //             value: "{viewModel>/selectedMaterialDesc}",
-                    //             valueHelpRequest: this.onValueDescHelpRequest.bind(this),
-                    //             change: this.onMaterialInputChange.bind(this)
-                    //         }),
-
-                    //         // new sap.m.Button({
-                    //         //     text: "Add Vendor Entry",
-                    //         //     icon: "sap-icon://add",
-                    //         //     type: "Emphasized",
-                    //         //     press: () => {
-                    //         //         const sDesc = oViewModel.getProperty("/selectedMaterialDesc");
-                    //         //         if (!sDesc) {
-                    //         //             return sap.m.MessageBox.warning("Please select a material description first.");
-                    //         //         }
-
-                    //         //         const aData = oViewModel.getProperty("/materialData") || [];
-                    //         //         aData.push({
-                    //         //             Description: sDesc,
-                    //         //             Vendor_Details: "",
-                    //         //             Quotation_Date: "",
-                    //         //             Quotation_Price: "",
-                    //         //             Payment_Terms: "",
-                    //         //             Transportation_Charges: "",
-                    //         //             SABER: "",
-                    //         //             Total_Sub_Charges: "",
-                    //         //             Total_Price: ""
-                    //         //         });
-                    //         //         oViewModel.setProperty("/materialData", [...aData]);
-                    //         //     }
-                    //         // }).addStyleClass("sapUiSmallMarginBegin"),
-
-                    //         new sap.m.Input({
-                    //             value: "{viewModel>Vendor_Details}",
-                    //             showValueHelp: true,
-                    //             valueHelpRequest: this.onValueVendorsHelpRequest.bind(this),
-                    //             change: this.onMaterialInputChange.bind(this)
-                    //         }),
-                    //         new sap.m.Input({
-                    //             value: "{viewModel>Quotation_Date}",
-                    //             type: "Date",
-                    //             change: this.onMaterialInputChange.bind(this)
-                    //         }),
-                    //         new sap.m.Input({
-                    //             value: "{viewModel>Quotation_Price}",
-                    //             type: "Number",
-                    //             change: this.onMaterialInputChange.bind(this)
-                    //         }),
-                    //         new sap.m.Input({
-                    //             value: "{viewModel>Payment_Terms}",
-                    //             change: this.onMaterialInputChange.bind(this)
-                    //         }),
-                    //         new sap.m.Input({
-                    //             value: "{viewModel>Freight_Clearance_Charges}", // Fixed typo
-                    //             type: "Number",
-                    //             change: this.onMaterialInputChange.bind(this)
-                    //         }),
-                    //         new sap.m.Input({
-                    //             value: "{viewModel>Transportation_Charges}",
-                    //             type: "Number",
-                    //             change: this.onMaterialInputChange.bind(this)
-                    //         }),
-                    //         new sap.m.Input({
-                    //             value: "{viewModel>SABER}",
-                    //             change: this.onMaterialInputChange.bind(this)
-                    //         }),
-                    //         new sap.m.Input({
-                    //             value: "{viewModel>Total_Sub_Charges}",
-                    //             type: "Number",
-                    //             change: this.onMaterialInputChange.bind(this)
-                    //         }),
-                    //         new sap.m.Input({
-                    //             value: "{viewModel>Total_Price}",
-                    //             type: "Number",
-                    //             change: this.onMaterialTotalPriceChange.bind(this)
-                    //         })
-                    //     ]
-                    // })
+                    factory: this._createMaterialRow.bind(this)      
                 }
             }).addStyleClass("sapUiResponsiveMargin sapUiSizeCompact");
 
@@ -2027,7 +1944,7 @@ sap.ui.define([
 
                 oViewModel.setProperty("/materialData", [{
                     selectedMaterialDesc: "", Vendor_Details: "", Quotation_Date: "", Quotation_Price: "",
-                    Payment_Terms: "", Freight_Clearance_Charges: "", Transportation_Charges: "", SABER: "", Total_Sub_Charges: ""
+                    Payment_Terms: "", Freight_Clearance_Charges: "", Transportation_Charges: "", SABER: "", Total_Sub_Charges: "", Total_Price: ""
                 }]);
             } else if (sCategory === "Cables") {
                 oViewModel.setProperty("/cablesData", [{
@@ -2051,59 +1968,12 @@ sap.ui.define([
                         change: this.onMaterialInputChange.bind(this)
                     }),
 
-                    // new sap.m.Button({
-                    //     text: "Add Vendor Entry",
-                    //     icon: "sap-icon://add",
-                    //     type: "Emphasized",
-                    //     press: () => {
-                    //         const sDesc = oViewModel.getProperty("/selectedMaterialDesc");
-                    //         if (!sDesc) {
-                    //             return sap.m.MessageBox.warning("Please select a material description first.");
-                    //         }
-
-                    //         const aData = oViewModel.getProperty("/materialData") || [];
-                    //         aData.push({
-                    //             Description: sDesc,
-                    //             Vendor_Details: "",
-                    //             Quotation_Date: "",
-                    //             Quotation_Price: "",
-                    //             Payment_Terms: "",
-                    //             Transportation_Charges: "",
-                    //             SABER: "",
-                    //             Total_Sub_Charges: "",
-                    //             Total_Price: ""
-                    //         });
-                    //         oViewModel.setProperty("/materialData", [...aData]);
-                    //     }
-                    // }).addStyleClass("sapUiSmallMarginBegin"),
-
+                  
                     new sap.m.Input({
                         value: "{viewModel>Vendor_Details}",
                         showValueHelp: true,
                         valueHelpRequest: this.onValueVendorsHelpRequest.bind(this),
                         change: this.onMaterialInputChange.bind(this)
-                        // valueHelpRequest: (oEvent) => {
-                        //     const oItem = oEvent.getSource().getParent();
-                        //     const oBindingContext = oItem.getBindingContext("viewModel");
-                        //     const sDescription = oBindingContext.getProperty("selectedMaterialDesc");
-                        //     if (!sDescription) {
-                        //         sap.m.MessageBox.warning("Please enter a material description before selecting a vendor.");
-                        //         return;
-                        //     }
-                        //     this.onValueVendorsHelpRequest(oEvent);
-                        // },
-                        // change: (oEvent) => {
-                        //     const oInput = oEvent.getSource();
-                        //     const oItem = oInput.getParent();
-                        //     const oBindingContext = oItem.getBindingContext("viewModel");
-                        //     const sDescription = oBindingContext.getProperty("selectedMaterialDesc");
-                        //     if (!sDescription) {
-                        //         sap.m.MessageBox.warning("Please enter a material description before entering vendor details.");
-                        //         oInput.setValue(""); // Clear the input
-                        //         return;
-                        //     }
-                        //     this.onMaterialInputChange(oEvent);
-                        // }
                     }),
                     new sap.m.Input({
                         value: "{viewModel>Quotation_Date}",
@@ -2122,7 +1992,8 @@ sap.ui.define([
                     new sap.m.Input({
                         value: "{viewModel>Freight_Clearance_Charges}", // Fixed typo
                         type: "Number",
-                        change: this.onMaterialInputChange.bind(this)
+                        change: this.onMaterialInputChange.bind(this),
+                        editable:false
                     }),
                     new sap.m.Input({
                         value: "{viewModel>Transportation_Charges}",
@@ -2232,6 +2103,19 @@ sap.ui.define([
                 oData = oData.map((item, index) =>
                     index === iIndex ? { ...item, [sProperty]: oInput.getValue() } : { ...item }
                 );
+                // oData[iIndex] = {
+                //     ...oData[iIndex],
+                //     Description: oData[iIndex].Description || "",
+                //     Vendor_Details: oData[iIndex].Vendor_Details || "",
+                //     Quotation_Date: oData[iIndex].Quotation_Date || "",
+                //     Quotation_Price: oData[iIndex].Quotation_Price || "",
+                //     Payment_Terms: oData[iIndex].Payment_Terms || "",
+                //     Freight_Clearance_Charges: oData[iIndex].Quotation_Price ? (oData[iIndex].Quotation_Price * 17 /100) : "" || "", // Fixed typo
+                //     Transportation_Charges: oData[iIndex].Transportation_Charges || "",
+                //     SABER: oData[iIndex].SABER || "",
+                //     Total_Sub_Charges: oData[iIndex].Total_Sub_Charges || "",
+                //     Total_Price: oData[iIndex].Total_Price || ""
+                // };
 
                 oViewModel.setProperty("/materialData", oData);
                 console.log("materialData after input change:", JSON.parse(JSON.stringify(oData)));
