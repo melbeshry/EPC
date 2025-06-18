@@ -182,6 +182,7 @@ sap.ui.define([
             this._oValueHelpDialog.open();
         },
 
+        // worked for input and selection 
         async onValueDescHelpRequest(oEvent) {
             const oInput = oEvent.getSource();
             const sCurrentValue = oInput.getValue();
@@ -299,6 +300,7 @@ sap.ui.define([
             this._oDescValueHelpDialog.open();
         },
 
+        // worked for input and selection 
         async onValueVendorsHelpRequest(oEvent) {
             const oInput = oEvent.getSource();
             const oItem = oInput.getParent();
@@ -1720,21 +1722,21 @@ sap.ui.define([
                             aSelectedVendors.push({ vendor, idx });
 
                             aSelectedIndices.push(idx);
-                            if (vendor.Quotation_Price) {
-                                totalAmount += parseFloat(vendor.Quotation_Price) || 0;
-                            }
+                            // if (vendor.Quotation_Price) {
+                            //     totalAmount += parseFloat(vendor.Quotation_Price) || 0;
+                            // }
                         } else {
                             const indexToRemove = aSelectedIndices.indexOf(idx);
                             if (indexToRemove > -1) {
                                 aSelectedIndices.splice(indexToRemove, 1);
-                                if (vendor.Quotation_Price) {
-                                    totalAmount -= parseFloat(vendor.Quotation_Price) || 0;
-                                }
+                                // if (vendor.Quotation_Price) {
+                                //     totalAmount -= parseFloat(vendor.Quotation_Price) || 0;
+                                // }
                             }
                         }
                         console.log("cofimed vendors", aSelectedIndices);
                         console.log("Selected Vendors:", aSelectedVendors);
-                        oViewModel.setProperty("/totalAmount", totalAmount.toFixed(2));
+                       // oViewModel.setProperty("/totalAmount", totalAmount.toFixed(2));
                     }
                 });
                 oVBox.addItem(oCheckBox);
@@ -1763,23 +1765,13 @@ sap.ui.define([
                         // Combine unique vendors and selected vendors
                         const aNewMaterialData = [...aUniqueVendors, ...aSelectedMaterialData];
                         oViewModel.setProperty("/materialData", aNewMaterialData);
-
-                        // // Create new materialData array with only selected vendors
-                        // const aNewMaterialData = aSelectedVendors.map(item => ({
-                        //     ...item.vendor,
-                        //     Total_Price: item.vendor.Quotation_Price || ""
-                        // }));
-                        // oViewModel.setProperty("/materialData", aNewMaterialData);
-                        /* old */
-                        //const aMaterialData = oViewModel.getProperty("/materialData");
-
-                        // Update Total_Price for selected vendors only
-                        // aMaterialData.forEach((vendor, idx) => {
-                        //     vendor.Total_Price = aSelectedIndices.includes(idx) && vendor.Quotation_Price ? vendor.Quotation_Price : "";
-                        // });
-
-                        // oViewModel.setProperty("/materialData", aMaterialData);
-                        oViewModel.setProperty("/totalAmount", totalAmount.toFixed(2));
+                        const aData = this.getView().getModel("viewModel").getProperty("/materialData");
+                        console.log(aData);
+                        
+                       const totalAmount = aData.reduce((sum, row) => sum + (parseFloat(row.Total_Price) || 0), 0).toFixed(2);
+                        console.log(totalAmount);
+                        
+                        oViewModel.setProperty("/totalAmount", totalAmount);
 
                         // Optional: Update service model Gross Price
                         const oServiceModel = this.getView().getModel("serviceModel");
@@ -2133,7 +2125,7 @@ sap.ui.define([
                         change: this.onMaterialInputChange.bind(this)
                     }),
                     new sap.m.Input({
-                        value: "{viewModel>Freight_Clearance_Charges}", // Fixed typo
+                        value: "{viewModel>Freight_Clearance_Charges}",
                         type: "Number",
                         change: this.onMaterialInputChange.bind(this),
                         editable: false
@@ -2145,6 +2137,7 @@ sap.ui.define([
                     }),
                     new sap.m.Input({
                         value: "{viewModel>SABER}",
+                        type: "Number",
                         change: this.onMaterialInputChange.bind(this)
                     }),
                     new sap.m.Input({
@@ -2262,12 +2255,23 @@ sap.ui.define([
                     Payment_Terms: oData[iIndex].Payment_Terms || "",
                     Freight_Clearance_Charges: oData[iIndex].Frieght_Clearance_Charges || "",
 
-                    // Freight_Clearance_Charges: oData[iIndex].Quotation_Price ? (oData[iIndex].Quotation_Price * 17 /100) : "" || "", // Fixed typo
+                    // Freight_Clearance_Charges: oData[iIndex].Quotation_Price ? (oData[iIndex].Quotation_Price * 17 / 100) : "" || "",
                     Transportation_Charges: oData[iIndex].Transportation_Charges || "",
                     SABER: oData[iIndex].SABER || "",
                     Total_Sub_Charges: oData[iIndex].Total_Sub_Charges || "",
+                    // Total_Sub_Charges: oData[iIndex].Quotation_Price && oData[iIndex].Transportation_Charges && oData[iIndex].SABER ? (oData[iIndex].Quotation_Price * 17 / 100) : 0 || 0 + oData[iIndex].Transportation_Charges + oData[iIndex].SABER || "",
                     Total_Price: oData[iIndex].Quotation_Price || ""
                 };
+
+                // Calculate Freight_Clearance_Charges (17% of Quotation_Price)
+                const fQuotationPrice = parseFloat(oData[iIndex].Quotation_Price) || 0;
+                oData[iIndex].Freight_Clearance_Charges = fQuotationPrice ? (fQuotationPrice * 0.17).toFixed(2) : "";
+
+                // Calculate Total_Sub_Charges (sum of Freight_Clearance_Charges, Transportation_Charges, SABER)
+                const fFreightCharges = parseFloat(oData[iIndex].Freight_Clearance_Charges) || 0;
+                const fTransportationCharges = parseFloat(oData[iIndex].Transportation_Charges) || 0;
+                const fSABER = parseFloat(oData[iIndex].SABER) || 0;
+                oData[iIndex].Total_Sub_Charges = (fFreightCharges + fTransportationCharges + fSABER).toFixed(2);
 
                 oViewModel.setProperty("/materialData", oData);
                 console.log("materialData after input change:", JSON.parse(JSON.stringify(oData)));
@@ -2476,6 +2480,8 @@ sap.ui.define([
                 totalAmount = aData.reduce((sum, row) => sum + (parseFloat(row.Total) || 0), 0).toFixed(2);
             } else if (sCategory === "Material") {
                 const aData = this.getView().getModel("viewModel").getProperty("/materialData");
+                console.log(aData);
+                
                 totalAmount = aData.reduce((sum, row) => sum + (parseFloat(row.Total_Price) || 0), 0).toFixed(2);
             }
             else if (sCategory === "Cables") {
