@@ -182,6 +182,258 @@ sap.ui.define([
             this._oValueHelpDialog.open();
         },
 
+        async onValueDescHelpRequest(oEvent) {
+            const oInput = oEvent.getSource();
+            const sCurrentValue = oInput.getValue();
+            const oViewModel = this.getView().getModel("viewModel");
+            const oContext = oInput.getBindingContext("viewModel");
+
+            // Store input and context to avoid stale event issues
+            this._oCurrentDescInput = oInput;
+            this._oCurrentDescContext = oContext;
+
+            if (!this._oDescValueHelpDialog) {
+                this._oDescValueHelpDialog = new sap.m.Dialog({
+                    title: "Select Product Description",
+                    content: [
+                        new sap.m.SearchField({
+                            width: "100%",
+                            placeholder: "Search Descriptions",
+                            liveChange: (oEvent) => {
+                                const sQuery = oEvent.getParameter("newValue");
+                                const oComboBox = this.byId(this.createId("desComboBox"));
+                                const oBinding = oComboBox.getBinding("items");
+                                if (sQuery) {
+                                    const oFilter = new sap.ui.model.Filter("ProductDescription", sap.ui.model.FilterOperator.Contains, sQuery);
+                                    oBinding.filter([oFilter]);
+                                } else {
+                                    oBinding.filter([]);
+                                }
+                            }
+                        }),
+                        new sap.m.ComboBox({
+                            id: this.createId("desComboBox"),
+                            width: "100%",
+                            showSecondaryValues: true,
+                            filterSuggest: true,
+                            items: {
+                                path: "/A_ProductDescription",
+                                parameters: { $count: true },
+                                template: new sap.ui.core.ListItem({
+                                    key: "{Product}",
+                                    text: "{ProductDescription}",
+                                    additionalText: "{Product}"
+                                }),
+                                events: {
+                                    dataReceived: (oEvent) => {
+                                        const oContext = oEvent.getParameter("data");
+                                        console.log("Product data count:", oContext?.__count || "N/A");
+                                        if (oContext && oContext.__count === 0) {
+                                            sap.m.MessageBox.warning("No data found in Product Description.");
+                                        }
+                                    }
+                                }
+                            }
+                        })
+                    ],
+                    beginButton: new sap.m.Button({
+                        text: "Confirm",
+                        press: () => {
+                            const oComboBox = this.byId(this.createId("desComboBox"));
+                            const oSelectedItem = oComboBox.getSelectedItem();
+                            if (oSelectedItem) {
+                                const sText = oSelectedItem.getText();
+                                const oInput = this._oCurrentDescInput;
+                                const oContext = this._oCurrentDescContext;
+
+                                if (oContext) {
+                                    const sPath = oContext.getPath();
+                                    const iIndex = parseInt(sPath.split("/").pop(), 10);
+                                    let aMaterialData = oViewModel.getProperty("/materialData") || [];
+
+                                    console.log("materialData before update:", JSON.parse(JSON.stringify(aMaterialData)));
+
+                                    aMaterialData[iIndex] = {
+                                        ...aMaterialData[iIndex],
+                                        Description: sText
+                                    };
+
+                                    oViewModel.setProperty("/materialData", [...aMaterialData]);
+                                    oInput.setValue(sText);
+                                    console.log("materialData after update:", JSON.parse(JSON.stringify(aMaterialData)));
+                                    this.byId("materialTable").getBinding("items").refresh(true);
+
+                                    this._oDescValueHelpDialog.close();
+                                } else {
+                                    console.warn("No binding context found for input");
+                                    sap.m.MessageBox.warning("Unable to update description.");
+                                }
+                            } else {
+                                sap.m.MessageBox.warning("Please select a product description.");
+                            }
+                        }
+                    }),
+                    endButton: new sap.m.Button({
+                        text: "Cancel",
+                        press: () => {
+                            this._oCurrentDescInput.setValue(sCurrentValue);
+                            this._oDescValueHelpDialog.close();
+                        }
+                    })
+                });
+
+                const oProductModel = this.getOwnerComponent().getModel("productModel");
+                this._oDescValueHelpDialog.setModel(oProductModel);
+                this._oDescValueHelpDialog.setModel(oViewModel, "viewModel");
+                this.getView().addDependent(this._oDescValueHelpDialog);
+            }
+
+            const oComboBox = this.byId(this.createId("desComboBox"));
+            if (oComboBox && this._oCurrentDescContext) {
+                const sPath = this._oCurrentDescContext.getPath() + "/Description";
+                const sKey = oViewModel.getProperty(sPath) || "";
+                oComboBox.setSelectedKey(sKey);
+                console.log("Setting ComboBox key:", sKey);
+            }
+
+            this._oDescValueHelpDialog.open();
+        },
+
+        async onValueVendorsHelpRequest(oEvent) {
+            const oInput = oEvent.getSource();
+            const oItem = oInput.getParent();
+            const oBindingContext = oItem.getBindingContext("viewModel");
+            const oData = oBindingContext.getObject();
+            const sDescription = oData.Description;
+
+            console.log("Description:", sDescription);
+
+            if (!sDescription) {
+                sap.m.MessageBox.warning("Please enter a material description before selecting a vendor.");
+                return;
+            }
+
+            const oViewModel = this.getView().getModel("viewModel");
+            const sCurrentValue = oInput.getValue();
+
+            // Store input and context for use in Confirm button
+            this._oCurrentVendorInput = oInput;
+            this._oCurrentVendorContext = oBindingContext;
+
+            if (!this._oVendorValueHelpDialog) {
+                this._oVendorValueHelpDialog = new sap.m.Dialog({
+                    title: "Select Vendor",
+                    content: [
+                        new sap.m.SearchField({
+                            width: "100%",
+                            placeholder: "Search Vendors",
+                            liveChange: (oEvent) => {
+                                const sQuery = oEvent.getParameter("newValue");
+                                const oComboBox = this.byId(this.createId("vendorComboBox"));
+                                const oBinding = oComboBox.getBinding("items");
+                                if (sQuery) {
+                                    const oFilter = new sap.ui.model.Filter("SupplierName", sap.ui.model.FilterOperator.Contains, sQuery);
+                                    oBinding.filter([oFilter]);
+                                } else {
+                                    oBinding.filter([]);
+                                }
+                            }
+                        }),
+                        new sap.m.ComboBox({
+                            id: this.createId("vendorComboBox"),
+                            width: "100%",
+                            showSecondaryValues: true,
+                            filterSuggest: true,
+                            items: {
+                                path: "/A_Supplier",
+                                parameters: { $count: true },
+                                template: new sap.ui.core.ListItem({
+                                    key: "{Supplier}",
+                                    text: "{SupplierName}",
+                                    additionalText: "{Supplier}"
+                                }),
+                                events: {
+                                    dataReceived: (oEvent) => {
+                                        const oContext = oEvent.getParameter("data");
+                                        console.log("Total count from server:", oContext?.__count || "N/A");
+                                        if (oContext && oContext.__count === 0) {
+                                            sap.m.MessageBox.warning("No data found in A_Supplier.");
+                                        }
+                                    }
+                                }
+                            },
+                            change: (oEvent) => {
+                                const oComboBox = oEvent.getSource();
+                                const sSelectedKey = oComboBox.getSelectedKey();
+                                console.log("Selected Vendor:", sSelectedKey);
+                            }
+                        })
+                    ],
+                    beginButton: new sap.m.Button({
+                        text: "Confirm",
+                        press: () => {
+                            const oComboBox = this.byId(this.createId("vendorComboBox"));
+                            const oSelectedItem = oComboBox.getSelectedItem();
+                            if (oSelectedItem) {
+                                const sSelectedText = oSelectedItem.getText();
+                                const oInput = this._oCurrentVendorInput;
+                                const oBindingContext = this._oCurrentVendorContext;
+
+                                if (oBindingContext) {
+                                    const sPath = oBindingContext.getPath();
+                                    const iIndex = parseInt(sPath.split("/").pop(), 10);
+                                    let aMaterialData = oViewModel.getProperty("/materialData") || [];
+
+                                    console.log("materialData before update:", JSON.parse(JSON.stringify(aMaterialData)));
+
+                                    aMaterialData[iIndex] = {
+                                        ...aMaterialData[iIndex],
+                                        Vendor_Details: sSelectedText
+                                    };
+
+                                    oViewModel.setProperty("/materialData", [...aMaterialData]);
+                                    oInput.setValue(sSelectedText);
+                                    console.log("materialData after update:", JSON.parse(JSON.stringify(aMaterialData)));
+                                    this.byId("materialTable").getBinding("items").refresh(true);
+
+                                    this._oVendorValueHelpDialog.close();
+                                } else {
+                                    console.warn("No binding context found for input");
+                                    sap.m.MessageBox.warning("Unable to update vendor details.");
+                                }
+                            } else {
+                                sap.m.MessageBox.warning("Please select a vendor.");
+                            }
+                        }
+                    }),
+                    endButton: new sap.m.Button({
+                        text: "Cancel",
+                        press: () => {
+                            this._oCurrentVendorInput.setValue(sCurrentValue);
+                            this._oVendorValueHelpDialog.close();
+                        }
+                    })
+                });
+
+                const oODataModel = this.getOwnerComponent().getModel("supplierModel");
+                this._oVendorValueHelpDialog.setModel(oODataModel);
+                this._oVendorValueHelpDialog.setModel(oViewModel, "viewModel");
+                this.getView().addDependent(this._oVendorValueHelpDialog);
+            }
+
+            const oComboBox = this.byId(this.createId("vendorComboBox"));
+            if (oComboBox && this._oCurrentVendorContext) {
+                const sPath = this._oCurrentVendorContext.getPath() + "/Vendor_Details";
+                const sKey = oViewModel.getProperty(sPath) || "";
+                oComboBox.setSelectedKey(sKey);
+                console.log("Setting Vendor ComboBox key:", sKey);
+            }
+
+            this._oVendorValueHelpDialog.open();
+        },
+
+
+        // worked for selection only
         // async onValueDescHelpRequest(oEvent) {
         //     const oInput = oEvent.getSource();
         //     const sCurrentValue = oInput.getValue();
@@ -244,72 +496,75 @@ sap.ui.define([
         //                         oViewModel.setProperty("/selectedMaterialDesc", sText);
         //                         oViewModel.setProperty("/selectedMaterialId", sKey);
 
-        //                         if (oContext) {
-        //                             const sPath = oContext.getPath();
-        //                             const iIndex = parseInt(sPath.split("/").pop(), 10);
-        //                             let oData = oViewModel.getProperty("/materialData");
-        //                             console.log("materialData before update:", JSON.parse(JSON.stringify(oData)));
-        //                             oData = oData.map((item, index) =>
-        //                                 index === iIndex ? { ...item, Description: sText } : { ...item }
-        //                             );
-        //                             // start
-        //                             // // Add a new row with the selected vendor
-        //                             // const newRow = {
-        //                             //     Description: sText,
-        //                             //     Vendor_Details: "",
-        //                             //     Quotation_Date: "",
-        //                             //     Quotation_Price: "",
-        //                             //     Payment_Terms: "",
-        //                             //     Freight_Clearance_Charges: "",
-        //                             //     Transportation_Charges: "",
-        //                             //     SABER: "",
-        //                             //     Total_Sub_Charges: "",
-        //                             //     Total_Price: ""
-        //                             // };
-        //                             // oData = oData.filter(item =>
-        //                             //     item.Description !== "" ||
-        //                             //     item.Vendor_Details !== "" ||
-        //                             //     item.Quotation_Date !== "" ||
-        //                             //     item.Quotation_Price !== "" ||
-        //                             //     item.Payment_Terms !== "" ||
-        //                             //     item.Freight_Clearance_Charges !== "" ||
-        //                             //     item.Transportation_Charges !== "" ||
-        //                             //     item.SABER !== "" ||
-        //                             //     item.Total_Sub_Charges !== "" ||
-        //                             //     item.Total_Price !== ""
-        //                             // );
-        //                             // console.log("Original OData:", JSON.parse(JSON.stringify(oData)));
+        //                         let oData = oViewModel.getProperty("/materialData") || [];
 
-        //                             // oData.forEach((item, index) => {
-        //                             //     const itemIdx = oData.indexOf(item);
-        //                             //     console.log("Index:", itemIdx);
-        //                             //     console.log("Vendor Details:", item.Vendor_Details);
-        //                             // });
+        //                         // if (oContext) {
+        //                         //     // Update existing row if context exists
+        //                         //     const sPath = oContext.getPath();
+        //                         //     const iIndex = parseInt(sPath.split("/").pop(), 10);
+        //                         //     console.log("materialData before update:", JSON.parse(JSON.stringify(oData)));
+        //                         //     oData = oData.map((item, index) =>
+        //                         //         index === iIndex ? { ...item, Description: sText } : { ...item }
+        //                         //     );
+        //                         //     oViewModel.setProperty("/materialData", oData);
+        //                         //     oInput.setValue(sText);
+        //                         //     console.log("materialData after update:", JSON.parse(JSON.stringify(oData)));
+        //                         //     console.log("Updated row index:", iIndex, "Path:", sPath);
+        //                         // }
+        //                         // Add new row if no context (global input or new selection)
+        //                         const newRow = {
+        //                             Description: sText,
+        //                             Vendor_Details: "",
+        //                             Quotation_Date: "",
+        //                             Quotation_Price: "",
+        //                             Payment_Terms: "",
+        //                             Freight_Clearance_Charges: "",
+        //                             Transportation_Charges: "",
+        //                             SABER: "",
+        //                             Total_Sub_Charges: "",
+        //                             Total_Price: ""
+        //                         };
+        //                         // oData.push(newRow);
+        //                         // oViewModel.setProperty("/materialData", [...oData]);
+        //                         // oInput.setValue(sText); // Update the global input
+        //                         // console.log("materialData after adding new row:", JSON.parse(JSON.stringify(oData)));
 
-        //                             // // Filter out items with empty Vendor_Details
-        //                             // const filteredData = oData.filter(item => {
-        //                             //     const Description = item.Description;
-        //                             //     return Description != null && Description.trim() !== "";
-        //                             // });
-        //                             // console.log("Filtered OData:", JSON.parse(JSON.stringify(filteredData)));
+        //                         oData = oData.filter(item =>
+        //                             item.Description !== "" ||
+        //                             item.Vendor_Details !== "" ||
+        //                             item.Quotation_Date !== "" ||
+        //                             item.Quotation_Price !== "" ||
+        //                             item.Payment_Terms !== "" ||
+        //                             item.Freight_Clearance_Charges !== "" ||
+        //                             item.Transportation_Charges !== "" ||
+        //                             item.SABER !== "" ||
+        //                             item.Total_Sub_Charges !== "" ||
+        //                             item.Total_Price !== ""
+        //                         );
+        //                         console.log("Original OData:", JSON.parse(JSON.stringify(oData)));
 
-        //                             // // Update the model
-        //                             // oViewModel.setProperty("/materialData", filteredData);
-        //                             // this.byId("materialTable").getBinding("items").refresh(true); // Refresh the table
+        //                         oData.forEach((item, index) => {
+        //                             const itemIdx = oData.indexOf(item);
+        //                             console.log("Index:", itemIdx);
+        //                             console.log("Vendor Details:", item.Vendor_Details);
+        //                         });
 
-        //                             // filteredData.push(newRow);
+        //                         // Filter out items with empty Vendor_Details
+        //                         const filteredData = oData.filter(item => {
+        //                             const description = item.Description;
+        //                             return description != null && description.trim() !== "";
+        //                         });
+        //                         console.log("Filtered OData:", JSON.parse(JSON.stringify(filteredData)));
 
-        //                             // end 
-        //                             //oViewModel.setProperty("/materialData", oData);
-        //                             oInput.setValue(sText);
-        //                             console.log("materialData after update:", JSON.parse(JSON.stringify(oData)));
-        //                             console.log("Updated row index:", iIndex, "Path:", sPath);
-        //                             this.byId("materialTable").getBinding("items").refresh(true); // Force refresh
-        //                         } else {
-        //                             // For the global input, set the value directly
-        //                             oInput.setValue(sText);
-        //                         }
-        //                         console.log("Selected Desc:", sText);
+        //                         // Update the model
+        //                         oViewModel.setProperty("/materialData", filteredData);
+        //                         this.byId("materialTable").getBinding("items").refresh(true); // Refresh the table
+
+        //                         filteredData.push(newRow);
+        //                         oViewModel.setProperty("/materialData", [...filteredData]);
+        //                         oInput.setValue(sText); // Update the input that triggered the dialog
+        //                         console.log("materialData after new row:", JSON.parse(JSON.stringify(filteredData)));
+        //                         this.byId("materialTable").getBinding("items").refresh(true); // Force refresh
         //                         this._oDescValueHelpDialog.close();
         //                     } else {
         //                         sap.m.MessageBox.warning("Please select a product description.");
@@ -332,410 +587,260 @@ sap.ui.define([
 
         //     // Reset ComboBox to current row's value if context exists, otherwise use global value
         //     const oComboBox = this.byId(this.createId("desComboBox"));
-        //     if (oComboBox && oContext) {
-
-        //         const sPath = oContext.getPath() + "/Description";
-        //         const sKey = oViewModel.getProperty(sPath) || "";
-        //         oComboBox.setSelectedKey(sKey);
-        //         console.log("in if ");
-        //         oViewModel.setProperty("/selectedMaterialDesc", "");
-        //         console.log("des",oViewModel.getProperty("/selectedMaterialDesc"));
-
-        //     } else if (oComboBox) {
-
-        //         const sKey = oViewModel.getProperty("/selectedMaterialDesc") || "";
-        //         oComboBox.setSelectedKey(sKey);
-
-
-        //         oViewModel.setProperty("/selectedMaterialDesc", "");
-        //         console.log("des",oViewModel.getProperty("/selectedMaterialDesc"));
-
-        //         console.log("in else if ");
+        //     if (oComboBox) {
+        //         if (oContext) {
+        //             const sPath = oContext.getPath() + "/Description";
+        //             const sKey = oViewModel.getProperty(sPath) || "";
+        //             oComboBox.setSelectedKey(sKey);
+        //             console.log("Context exists, setting key:", sKey);
+        //         } else {
+        //             const sKey = oViewModel.getProperty("/selectedMaterialDesc") || "";
+        //             oComboBox.setSelectedKey(sKey);
+        //             console.log("No context, setting global key:", sKey);
+        //         }
         //     }
         //     this._oDescValueHelpDialog.open();
         // },
-       
-        async onValueDescHelpRequest(oEvent) {
-            const oInput = oEvent.getSource();
-            const sCurrentValue = oInput.getValue();
-            const oViewModel = this.getView().getModel("viewModel");
-            const oContext = oInput.getBindingContext("viewModel");
 
-            if (!this._oDescValueHelpDialog) {
-                this._oDescValueHelpDialog = new sap.m.Dialog({
-                    title: "Select Product Description",
-                    content: [
-                        new sap.m.SearchField({
-                            width: "100%",
-                            placeholder: "Search Descriptions",
-                            liveChange: (oEvent) => {
-                                const sQuery = oEvent.getParameter("newValue");
-                                const oComboBox = this.byId(this.createId("desComboBox"));
-                                const oBinding = oComboBox.getBinding("items");
-                                if (sQuery) {
-                                    const oFilter = new sap.ui.model.Filter("ProductDescription", sap.ui.model.FilterOperator.Contains, sQuery);
-                                    oBinding.filter([oFilter]);
-                                } else {
-                                    oBinding.filter([]);
-                                }
-                            }
-                        }),
-                        new sap.m.ComboBox({
-                            id: this.createId("desComboBox"),
-                            width: "100%",
-                            showSecondaryValues: true,
-                            filterSuggest: true,
-                            items: {
-                                path: "/A_ProductDescription",
-                                parameters: { $count: true },
-                                template: new sap.ui.core.ListItem({
-                                    key: "{Product}",
-                                    text: "{ProductDescription}",
-                                    additionalText: "{Product}"
-                                }),
-                                events: {
-                                    dataReceived: (oEvent) => {
-                                        const oContext = oEvent.getParameter("data");
-                                        if (oContext && oContext.__count === 0) {
-                                            sap.m.MessageBox.warning("No data found in Product Description.");
-                                        }
-                                    }
-                                }
-                            }
-                        })
-                    ],
-                    beginButton: new sap.m.Button({
-                        text: "Confirm",
-                        press: () => {
-                            const oComboBox = this.byId(this.createId("desComboBox"));
-                            const oSelectedItem = oComboBox.getSelectedItem();
-                            if (oSelectedItem) {
-                                const sText = oSelectedItem.getText();
-                                const sKey = oSelectedItem.getKey();
+        async onMaterialDescSubmit(oEvent) {
+            var sDesc = oEvent.getSource().getValue().trim();
+            console.log(sDesc);
 
-                                // Set globally for the input outside the table
-                                oViewModel.setProperty("/selectedMaterialDesc", sText);
-                                oViewModel.setProperty("/selectedMaterialId", sKey);
-
-                                let oData = oViewModel.getProperty("/materialData") || [];
-
-                                // if (oContext) {
-                                //     // Update existing row if context exists
-                                //     const sPath = oContext.getPath();
-                                //     const iIndex = parseInt(sPath.split("/").pop(), 10);
-                                //     console.log("materialData before update:", JSON.parse(JSON.stringify(oData)));
-                                //     oData = oData.map((item, index) =>
-                                //         index === iIndex ? { ...item, Description: sText } : { ...item }
-                                //     );
-                                //     oViewModel.setProperty("/materialData", oData);
-                                //     oInput.setValue(sText);
-                                //     console.log("materialData after update:", JSON.parse(JSON.stringify(oData)));
-                                //     console.log("Updated row index:", iIndex, "Path:", sPath);
-                                // }
-                                // Add new row if no context (global input or new selection)
-                                const newRow = {
-                                    Description: sText,
-                                    Vendor_Details: "",
-                                    Quotation_Date: "",
-                                    Quotation_Price: "",
-                                    Payment_Terms: "",
-                                    Freight_Clearance_Charges: "",
-                                    Transportation_Charges: "",
-                                    SABER: "",
-                                    Total_Sub_Charges: "",
-                                    Total_Price: ""
-                                };
-                                // oData.push(newRow);
-                                // oViewModel.setProperty("/materialData", [...oData]);
-                                // oInput.setValue(sText); // Update the global input
-                                // console.log("materialData after adding new row:", JSON.parse(JSON.stringify(oData)));
-
-                                oData = oData.filter(item =>
-                                    item.Description !== "" ||
-                                    item.Vendor_Details !== "" ||
-                                    item.Quotation_Date !== "" ||
-                                    item.Quotation_Price !== "" ||
-                                    item.Payment_Terms !== "" ||
-                                    item.Freight_Clearance_Charges !== "" ||
-                                    item.Transportation_Charges !== "" ||
-                                    item.SABER !== "" ||
-                                    item.Total_Sub_Charges !== "" ||
-                                    item.Total_Price !== ""
-                                );
-                                console.log("Original OData:", JSON.parse(JSON.stringify(oData)));
-
-                                oData.forEach((item, index) => {
-                                    const itemIdx = oData.indexOf(item);
-                                    console.log("Index:", itemIdx);
-                                    console.log("Vendor Details:", item.Vendor_Details);
-                                });
-
-                                // Filter out items with empty Vendor_Details
-                                const filteredData = oData.filter(item => {
-                                    const description = item.Description;
-                                    return description != null && description.trim() !== "";
-                                });
-                                console.log("Filtered OData:", JSON.parse(JSON.stringify(filteredData)));
-
-                                // Update the model
-                                oViewModel.setProperty("/materialData", filteredData);
-                                this.byId("materialTable").getBinding("items").refresh(true); // Refresh the table
-
-                                filteredData.push(newRow);
-                                oViewModel.setProperty("/materialData", [...filteredData]);
-                                oInput.setValue(sText); // Update the input that triggered the dialog
-                                console.log("materialData after new row:", JSON.parse(JSON.stringify(filteredData)));
-                                this.byId("materialTable").getBinding("items").refresh(true); // Force refresh
-                                this._oDescValueHelpDialog.close();
-                            } else {
-                                sap.m.MessageBox.warning("Please select a product description.");
-                            }
-                        }
-                    }),
-                    endButton: new sap.m.Button({
-                        text: "Cancel",
-                        press: () => {
-                            oInput.setValue(sCurrentValue);
-                            this._oDescValueHelpDialog.close();
-                        }
-                    })
-                });
-
-                const oProductModel = this.getOwnerComponent().getModel("productModel");
-                this._oDescValueHelpDialog.setModel(oProductModel);
-                this.getView().addDependent(this._oDescValueHelpDialog);
-            }
-
-            // Reset ComboBox to current row's value if context exists, otherwise use global value
-            const oComboBox = this.byId(this.createId("desComboBox"));
-            if (oComboBox) {
-                if (oContext) {
-                    const sPath = oContext.getPath() + "/Description";
-                    const sKey = oViewModel.getProperty(sPath) || "";
-                    oComboBox.setSelectedKey(sKey);
-                    console.log("Context exists, setting key:", sKey);
-                } else {
-                    const sKey = oViewModel.getProperty("/selectedMaterialDesc") || "";
-                    oComboBox.setSelectedKey(sKey);
-                    console.log("No context, setting global key:", sKey);
-                }
-            }
-            this._oDescValueHelpDialog.open();
-        },
-        async onValueVendorsHelpRequest(oEvent) {
-
-            const oInput = oEvent.getSource();
-            const oItem = oInput.getParent();
-            const oBindingContext = oItem.getBindingContext("viewModel");
-            const oData = oBindingContext.getObject();
-            const sDescription = oData.Description;
-
-            // const oItem = oEvent.getSource();
-            // const oBindingContext = oItem.getBindingContext("viewModel");
-            // const sDescription = oBindingContext.getProperty("selectedMaterialDesc");
-            console.log(sDescription);
-
-            if (!sDescription) {
-                sap.m.MessageBox.warning("Please enter a material description before selecting a vendor.");
+            if (!sDesc) {
+                MessageBox.error("Please enter a valid description.");
                 return;
             }
-            else {
-
-                const oInput = oEvent.getSource();
-                const oContext = oInput.getBindingContext("viewModel");
-                const sCurrentValue = oInput.getValue();
-                const oViewModel = this.getView().getModel("viewModel");
-
-                if (!this._oVendorValueHelpDialog) {
-                    this._oVendorValueHelpDialog = new sap.m.Dialog({
-                        title: "Select Vendor",
-                        content: [
-                            new sap.m.SearchField({
-                                width: "100%",
-                                placeholder: "Search Vendors",
-                                liveChange: (oEvent) => {
-                                    const sQuery = oEvent.getParameter("newValue");
-                                    const oComboBox = this.byId(this.createId("vendorComboBox"));
-                                    const oBinding = oComboBox.getBinding("items");
-                                    if (sQuery) {
-                                        const oFilter = new sap.ui.model.Filter("SupplierName", sap.ui.model.FilterOperator.Contains, sQuery);
-                                        oBinding.filter([oFilter]);
-                                    } else {
-                                        oBinding.filter([]);
-                                    }
-                                }
-                            }),
-                            new sap.m.ComboBox({
-                                id: this.createId("vendorComboBox"),
-                                width: "100%",
-                                showSecondaryValues: true,
-                                filterSuggest: true,
-                                items: {
-                                    path: "/A_Supplier",
-                                    parameters: { $count: true },
-                                    template: new sap.ui.core.ListItem({
-                                        key: "{Supplier}",
-                                        text: "{SupplierName}",
-                                        additionalText: "{Supplier}"
-                                    }),
-                                    events: {
-                                        dataReceived: (oEvent) => {
-                                            const oContext = oEvent.getParameter("data");
-                                            console.log("Total count from server:", oContext?.__count || "N/A");
-                                            if (oContext && oContext.__count === 0) {
-                                                sap.m.MessageBox.warning("No data found in A_Supplier.");
-                                            }
-                                        }
-                                    }
-                                },
-                                change: (oEvent) => {
-                                    const oComboBox = oEvent.getSource();
-                                    const sSelectedKey = oComboBox.getSelectedKey();
-                                    console.log("Selected Vendor:", sSelectedKey);
-                                }
-                            })
-                        ],
-                        beginButton: new sap.m.Button({
-                            text: "Confirm",
-                            press: () => {
-                                const oComboBox = this.byId(this.createId("vendorComboBox"));
-                                const oSelectedItem = oComboBox.getSelectedItem();
-                                if (oSelectedItem) {
-                                    const sSelectedText = oSelectedItem.getText();
-                                    const sDesc = oViewModel.getProperty("/selectedMaterialDesc") || ""; // Use global description
-                                    let oData = oViewModel.getProperty("/materialData") || [];
-
-                                    // Add a new row with the selected vendor
-                                    const newRow = {
-                                        Description: sDesc,
-                                        Vendor_Details: sSelectedText,
-                                        Quotation_Date: "",
-                                        Quotation_Price: "",
-                                        Payment_Terms: "",
-                                        Freight_Clearance_Charges: "",
-                                        Transportation_Charges: "",
-                                        SABER: "",
-                                        Total_Sub_Charges: "",
-                                        Total_Price: ""
-                                    };
-                                    oData = oData.filter(item =>
-                                        item.Vendor_Details !== "" ||
-                                        item.Quotation_Date !== "" ||
-                                        item.Quotation_Price !== "" ||
-                                        item.Payment_Terms !== "" ||
-                                        item.Freight_Clearance_Charges !== "" ||
-                                        item.Transportation_Charges !== "" ||
-                                        item.SABER !== "" ||
-                                        item.Total_Sub_Charges !== "" ||
-                                        item.Total_Price !== ""
-                                    );
-                                    console.log("Original OData:", JSON.parse(JSON.stringify(oData)));
-
-                                    oData.forEach((item, index) => {
-                                        const itemIdx = oData.indexOf(item);
-                                        console.log("Index:", itemIdx);
-                                        console.log("Vendor Details:", item.Vendor_Details);
-                                    });
-
-                                    // Filter out items with empty Vendor_Details
-                                    const filteredData = oData.filter(item => {
-                                        const vendorDetails = item.Vendor_Details;
-                                        return vendorDetails != null && vendorDetails.trim() !== "";
-                                    });
-                                    console.log("Filtered OData:", JSON.parse(JSON.stringify(filteredData)));
-
-                                    // Update the model
-                                    oViewModel.setProperty("/materialData", filteredData);
-                                    this.byId("materialTable").getBinding("items").refresh(true); // Refresh the table
-
-                                    filteredData.push(newRow);
-                                    oViewModel.setProperty("/materialData", [...filteredData]);
-                                    oInput.setValue(sSelectedText); // Update the input that triggered the dialog
-                                    console.log("materialData after new row:", JSON.parse(JSON.stringify(filteredData)));
-                                    this.byId("materialTable").getBinding("items").refresh(true); // Force refresh
-
-                                    this._oVendorValueHelpDialog.close();
-                                } else {
-                                    sap.m.MessageBox.warning("Please select a vendor.");
-                                }
-                            }
-                            // press: () => {
-                            //     const oComboBox = this.byId(this.createId("vendorComboBox"));
-                            //     const oSelectedItem = oComboBox.getSelectedItem();
-                            //     if (oSelectedItem) {
-                            //         const sSelectedText = oSelectedItem.getText();
-                            //         if (oContext) {
-                            //             const sPath = oContext.getPath();
-                            //             const iIndex = parseInt(sPath.split("/").pop(), 10);
-                            //             let oData = oViewModel.getProperty("/materialData");
-                            //             console.log("materialData before update:", JSON.parse(JSON.stringify(oData)));
-                            //             oData = oData.map((item, index) =>
-                            //                 true ? { ...item, Vendor_Details: sSelectedText } : { ...item }
-                            //             );
-                            //             oViewModel.setProperty("/materialData", oData);
-
-                            //             oInput.setValue(sSelectedText);
-                            //             console.log("materialData after update:", JSON.parse(JSON.stringify(oData)));
-                            //             console.log("Updated row index:", iIndex, "Path:", sPath);
-                            //             this.byId("materialTable").getBinding("items").refresh(true);
-                            //          }
-                            //          else {
-                            //             // Add new row if no context (e.g., called from a global intent or new row)
-                            //             const newRow = {
-                            //                 Description: sDesc,
-                            //                 Vendor_Details: sSelectedText,
-                            //                 Quotation_Date: "",
-                            //                 Quotation_Price: "",
-                            //                 Payment_Terms: "",
-                            //                 Freight_Clearance_Charges: "",
-                            //                 Transportation_Charges: "",
-                            //                 SABER: "",
-                            //                 Total_Sub_Charges: "",
-                            //                 Total_Price: ""
-                            //             };
-                            //             oData.push(newRow);
-                            //             oViewModel.setProperty("/materialData", [...oData]);
-                            //             oInput.setValue(sSelectedText); // Update the input that triggered the dialog
-                            //             console.log("materialData after new row:", JSON.parse(JSON.stringify(oData)));
-                            //         }
-                            //         this.byId("materialTable").getBinding("items").refresh(true); // Force refresh
-                            //         this._oVendorValueHelpDialog.close();
-                            //     } else {
-                            //         sap.m.MessageBox.warning("Please select a vendor.");
-                            //     } // Force refresh
-                            //         // } else {
-                            //         //     console.warn("No binding context found for input");
-                            //         // }
-                            //         // this._oVendorValueHelpDialog.close();
-                            //     // } else {
-                            //     //     sap.m.MessageBox.warning("Please select a vendor.");
-                            //     // }
-                            // }
-                        }),
-                        endButton: new sap.m.Button({
-                            text: "Cancel",
-                            press: () => {
-                                oInput.setValue(sCurrentValue);
-                                this._oVendorValueHelpDialog.close();
-                            }
-                        })
-                    });
-
-                    const oODataModel = this.getOwnerComponent().getModel("supplierModel");
-                    this._oVendorValueHelpDialog.setModel(oODataModel);
-                    this._oVendorValueHelpDialog.setModel(oViewModel, "viewModel");
-                    this.getView().addDependent(this._oVendorValueHelpDialog);
-                }
-                // Reset ComboBox to current row's value
-                const oComboBox = this.byId(this.createId("vendorComboBox"));
-                if (oComboBox && oContext) {
-                    const sPath = oContext.getPath() + "/Vendor_Details";
-                    const sKey = oViewModel.getProperty(sPath) || "";
-                    oComboBox.setSelectedKey(sKey);
-                }
-                this._oVendorValueHelpDialog.open();
-            }
+            this.byId("materialDescInput").setValue(sDesc);
+            this.getView().getModel("viewModel").setProperty("/Description", sDesc);
         },
+        // worked for selection only
+        // async onValueVendorsHelpRequest(oEvent) {
+
+        //     const oInput = oEvent.getSource();
+        //     const oItem = oInput.getParent();
+        //     const oBindingContext = oItem.getBindingContext("viewModel");
+        //     const oData = oBindingContext.getObject();
+        //     const sDescription = oData.Description;
+
+        //     // const oItem = oEvent.getSource();
+        //     // const oBindingContext = oItem.getBindingContext("viewModel");
+        //     // const sDescription = oBindingContext.getProperty("selectedMaterialDesc");
+        //     console.log(sDescription);
+
+        //     if (!sDescription) {
+        //         sap.m.MessageBox.warning("Please enter a material description before selecting a vendor.");
+        //         return;
+        //     }
+        //     else {
+
+        //         const oInput = oEvent.getSource();
+        //         const oContext = oInput.getBindingContext("viewModel");
+        //         const sCurrentValue = oInput.getValue();
+        //         const oViewModel = this.getView().getModel("viewModel");
+
+        //         if (!this._oVendorValueHelpDialog) {
+        //             this._oVendorValueHelpDialog = new sap.m.Dialog({
+        //                 title: "Select Vendor",
+        //                 content: [
+        //                     new sap.m.SearchField({
+        //                         width: "100%",
+        //                         placeholder: "Search Vendors",
+        //                         liveChange: (oEvent) => {
+        //                             const sQuery = oEvent.getParameter("newValue");
+        //                             const oComboBox = this.byId(this.createId("vendorComboBox"));
+        //                             const oBinding = oComboBox.getBinding("items");
+        //                             if (sQuery) {
+        //                                 const oFilter = new sap.ui.model.Filter("SupplierName", sap.ui.model.FilterOperator.Contains, sQuery);
+        //                                 oBinding.filter([oFilter]);
+        //                             } else {
+        //                                 oBinding.filter([]);
+        //                             }
+        //                         }
+        //                     }),
+        //                     new sap.m.ComboBox({
+        //                         id: this.createId("vendorComboBox"),
+        //                         width: "100%",
+        //                         showSecondaryValues: true,
+        //                         filterSuggest: true,
+        //                         items: {
+        //                             path: "/A_Supplier",
+        //                             parameters: { $count: true },
+        //                             template: new sap.ui.core.ListItem({
+        //                                 key: "{Supplier}",
+        //                                 text: "{SupplierName}",
+        //                                 additionalText: "{Supplier}"
+        //                             }),
+        //                             events: {
+        //                                 dataReceived: (oEvent) => {
+        //                                     const oContext = oEvent.getParameter("data");
+        //                                     console.log("Total count from server:", oContext?.__count || "N/A");
+        //                                     if (oContext && oContext.__count === 0) {
+        //                                         sap.m.MessageBox.warning("No data found in A_Supplier.");
+        //                                     }
+        //                                 }
+        //                             }
+        //                         },
+        //                         change: (oEvent) => {
+        //                             const oComboBox = oEvent.getSource();
+        //                             const sSelectedKey = oComboBox.getSelectedKey();
+        //                             console.log("Selected Vendor:", sSelectedKey);
+        //                         }
+        //                     })
+        //                 ],
+        //                 beginButton: new sap.m.Button({
+        //                     text: "Confirm",
+        //                     press: () => {
+        //                         const oComboBox = this.byId(this.createId("vendorComboBox"));
+        //                         const oSelectedItem = oComboBox.getSelectedItem();
+        //                         if (oSelectedItem) {
+        //                             const sSelectedText = oSelectedItem.getText();
+        //                             const sDesc = oViewModel.getProperty("/selectedMaterialDesc") || ""; // Use global description
+        //                             // const sDesc = oViewModel.getProperty("/Description") || ""; 
+
+        //                             // const oInput = oEvent.getSource();
+        //                             // const oItem = oInput.getParent();
+        //                             // const oBindingContext = oItem.getBindingContext("viewModel");
+        //                             // const oData1 = oBindingContext.getObject();
+        //                             // const sDesc = oData1.Description;
+        //                             // console.log(sDesc);
+
+        //                             // const oData1 = oBindingContext.getObject();
+        //                             // const sDesc = oData1.Description;
+
+
+        //                             let oData = oViewModel.getProperty("/materialData") || [];
+
+        //                             // Add a new row with the selected vendor
+        //                             const newRow = {
+        //                                 Description: sDesc,
+        //                                 Vendor_Details: sSelectedText,
+        //                                 Quotation_Date: "",
+        //                                 Quotation_Price: "",
+        //                                 Payment_Terms: "",
+        //                                 Freight_Clearance_Charges: "",
+        //                                 Transportation_Charges: "",
+        //                                 SABER: "",
+        //                                 Total_Sub_Charges: "",
+        //                                 Total_Price: ""
+        //                             };
+        //                             oData = oData.filter(item =>
+        //                                 item.Vendor_Details !== "" ||
+        //                                 item.Quotation_Date !== "" ||
+        //                                 item.Quotation_Price !== "" ||
+        //                                 item.Payment_Terms !== "" ||
+        //                                 item.Freight_Clearance_Charges !== "" ||
+        //                                 item.Transportation_Charges !== "" ||
+        //                                 item.SABER !== "" ||
+        //                                 item.Total_Sub_Charges !== "" ||
+        //                                 item.Total_Price !== ""
+        //                             );
+        //                             console.log("Original OData:", JSON.parse(JSON.stringify(oData)));
+
+        //                             oData.forEach((item, index) => {
+        //                                 const itemIdx = oData.indexOf(item);
+        //                                 console.log("Index:", itemIdx);
+        //                                 console.log("Vendor Details:", item.Vendor_Details);
+        //                             });
+
+        //                             // Filter out items with empty Vendor_Details
+        //                             const filteredData = oData.filter(item => {
+        //                                 const vendorDetails = item.Vendor_Details;
+        //                                 return vendorDetails != null && vendorDetails.trim() !== "";
+        //                             });
+        //                             console.log("Filtered OData:", JSON.parse(JSON.stringify(filteredData)));
+
+        //                             // Update the model
+        //                             oViewModel.setProperty("/materialData", filteredData);
+        //                             this.byId("materialTable").getBinding("items").refresh(true); // Refresh the table
+
+        //                             filteredData.push(newRow);
+        //                             oViewModel.setProperty("/materialData", [...filteredData]);
+        //                             oInput.setValue(sSelectedText); // Update the input that triggered the dialog
+        //                             console.log("materialData after new row:", JSON.parse(JSON.stringify(filteredData)));
+        //                             this.byId("materialTable").getBinding("items").refresh(true); // Force refresh
+
+        //                             this._oVendorValueHelpDialog.close();
+        //                         } else {
+        //                             sap.m.MessageBox.warning("Please select a vendor.");
+        //                         }
+        //                     }
+        //                     // press: () => {
+        //                     //     const oComboBox = this.byId(this.createId("vendorComboBox"));
+        //                     //     const oSelectedItem = oComboBox.getSelectedItem();
+        //                     //     if (oSelectedItem) {
+        //                     //         const sSelectedText = oSelectedItem.getText();
+        //                     //         if (oContext) {
+        //                     //             const sPath = oContext.getPath();
+        //                     //             const iIndex = parseInt(sPath.split("/").pop(), 10);
+        //                     //             let oData = oViewModel.getProperty("/materialData");
+        //                     //             console.log("materialData before update:", JSON.parse(JSON.stringify(oData)));
+        //                     //             oData = oData.map((item, index) =>
+        //                     //                 true ? { ...item, Vendor_Details: sSelectedText } : { ...item }
+        //                     //             );
+        //                     //             oViewModel.setProperty("/materialData", oData);
+
+        //                     //             oInput.setValue(sSelectedText);
+        //                     //             console.log("materialData after update:", JSON.parse(JSON.stringify(oData)));
+        //                     //             console.log("Updated row index:", iIndex, "Path:", sPath);
+        //                     //             this.byId("materialTable").getBinding("items").refresh(true);
+        //                     //          }
+        //                     //          else {
+        //                     //             // Add new row if no context (e.g., called from a global intent or new row)
+        //                     //             const newRow = {
+        //                     //                 Description: sDesc,
+        //                     //                 Vendor_Details: sSelectedText,
+        //                     //                 Quotation_Date: "",
+        //                     //                 Quotation_Price: "",
+        //                     //                 Payment_Terms: "",
+        //                     //                 Freight_Clearance_Charges: "",
+        //                     //                 Transportation_Charges: "",
+        //                     //                 SABER: "",
+        //                     //                 Total_Sub_Charges: "",
+        //                     //                 Total_Price: ""
+        //                     //             };
+        //                     //             oData.push(newRow);
+        //                     //             oViewModel.setProperty("/materialData", [...oData]);
+        //                     //             oInput.setValue(sSelectedText); // Update the input that triggered the dialog
+        //                     //             console.log("materialData after new row:", JSON.parse(JSON.stringify(oData)));
+        //                     //         }
+        //                     //         this.byId("materialTable").getBinding("items").refresh(true); // Force refresh
+        //                     //         this._oVendorValueHelpDialog.close();
+        //                     //     } else {
+        //                     //         sap.m.MessageBox.warning("Please select a vendor.");
+        //                     //     } // Force refresh
+        //                     //         // } else {
+        //                     //         //     console.warn("No binding context found for input");
+        //                     //         // }
+        //                     //         // this._oVendorValueHelpDialog.close();
+        //                     //     // } else {
+        //                     //     //     sap.m.MessageBox.warning("Please select a vendor.");
+        //                     //     // }
+        //                     // }
+        //                 }),
+        //                 endButton: new sap.m.Button({
+        //                     text: "Cancel",
+        //                     press: () => {
+        //                         oInput.setValue(sCurrentValue);
+        //                         this._oVendorValueHelpDialog.close();
+        //                     }
+        //                 })
+        //             });
+
+        //             const oODataModel = this.getOwnerComponent().getModel("supplierModel");
+        //             this._oVendorValueHelpDialog.setModel(oODataModel);
+        //             this._oVendorValueHelpDialog.setModel(oViewModel, "viewModel");
+        //             this.getView().addDependent(this._oVendorValueHelpDialog);
+        //         }
+        //         // Reset ComboBox to current row's value
+        //         const oComboBox = this.byId(this.createId("vendorComboBox"));
+        //         if (oComboBox && oContext) {
+        //             const sPath = oContext.getPath() + "/Vendor_Details";
+        //             const sKey = oViewModel.getProperty(sPath) || "";
+        //             oComboBox.setSelectedKey(sKey);
+        //         }
+        //         this._oVendorValueHelpDialog.open();
+        //     }
+        // },
         async onQuotationSubmit(oEvent) {
             var sQuotation = oEvent.getSource().getValue().trim();
             console.log(sQuotation);
@@ -1733,14 +1838,17 @@ sap.ui.define([
                     path: "viewModel>/simulationData",
                     template: new sap.m.ColumnListItem({
                         cells: [
-                            new sap.m.Text({ text: "E and D" }),
+                            // new sap.m.Text({ text: "E and D" }),
+                            new sap.m.Input({
+                                value: "{viewModel>description}", change: this.onSimulationInputChange.bind(this)
+                            }),
                             new sap.m.Input({
                                 value: "{viewModel>Salary}", type: "Number", change: this.onSimulationInputChange.bind(this)
                             }),
                             new sap.m.Input({ value: "{viewModel>Months}", type: "Number", change: this.onSimulationInputChange.bind(this) }),
                             new sap.m.Input({ value: "{viewModel>NoOfPersons}", type: "Number", change: this.onSimulationInputChange.bind(this) }),
                             new sap.m.Input({
-                                editable: false,
+                                // editable: false,
 
                                 value: "{viewModel>Amount}", type: "Number", change: this.onAmountDirectChange.bind(this)
                             })
@@ -1783,6 +1891,7 @@ sap.ui.define([
             // -----------------------------
             const oMaterialTable = new sap.m.Table({
                 id: this.createId("materialTable"),
+                keyboardMode: "Edit",
                 visible: sCategory === "Material",
                 inset: false,
                 width: "auto", // or 100%
@@ -1790,7 +1899,7 @@ sap.ui.define([
 
                 columns: [
                     "Material", "Vendor Details", "Quotation Date", "Quotation Price", "Payment Terms",
-                    "Freight & Clearance Charges (17%)", "Transportation Charges", "SABER", "Total Sub-Charges","Total Price"
+                    "Freight & Clearance Charges (17%)", "Transportation Charges", "SABER", "Total Sub-Charges", "Total Price"
                 ].map(text => new sap.m.Column({
                     header: new sap.m.Text({ text }),
                     //hAlign: "Center",
@@ -1799,7 +1908,7 @@ sap.ui.define([
                 })),
                 items: {
                     path: "viewModel>/materialData",
-                    factory: this._createMaterialRow.bind(this)      
+                    factory: this._createMaterialRow.bind(this)
                 }
             }).addStyleClass("sapUiResponsiveMargin sapUiSizeCompact");
 
@@ -1958,22 +2067,56 @@ sap.ui.define([
             return new sap.m.ColumnListItem({
                 cells: [
                     new sap.m.Input({
-                        placeholder: "Select Material Description",
+                        id: this.createId("materialDescInput" + sId),
+                        placeholder: "Enter or Select Material Description",
                         showValueHelp: true,
                         required: true,
                         // width: "300px",
                         //value: "{viewModel>/selectedMaterialDesc}",
                         value: "{viewModel>Description}",
                         valueHelpRequest: this.onValueDescHelpRequest.bind(this),
-                        change: this.onMaterialInputChange.bind(this)
+                        // change: this.onMaterialInputChange.bind(this),
+                        change: (oEvent) => {
+                            const sValue = oEvent.getSource().getValue();
+                            console.log("Change triggered:", sValue, "Context:", oContext.getObject());
+                            this.onMaterialInputChange(oEvent);
+                        },
+                        submit: (oEvent) => {
+                            const sValue = oEvent.getSource().getValue();
+                            const oInput = oEvent.getSource();
+                            const oBindingContext = oInput.getBindingContext("viewModel");
+                            const oRowData = oBindingContext ? oBindingContext.getObject() : {};
+                            console.log("Submit triggered:", sValue, "Row Data:", oRowData);
+                            this.onMaterialInputChange(oEvent);
+                        },
+                        valueState: "None",
                     }),
 
-                  
                     new sap.m.Input({
+                        id: this.createId("vendorDetailsInput" + sId),
+                        placeholder: "Enter or Select Vendor",
                         value: "{viewModel>Vendor_Details}",
                         showValueHelp: true,
                         valueHelpRequest: this.onValueVendorsHelpRequest.bind(this),
-                        change: this.onMaterialInputChange.bind(this)
+                        // change: this.onMaterialInputChange.bind(this)
+                        change: (oEvent) => {
+                            const sValue = oEvent.getSource().getValue();
+                            console.log("Vendor Change triggered:", sValue, "Context:", oContext.getObject());
+                            this.onMaterialInputChange(oEvent);
+                        },
+                        submit: (oEvent) => {
+                            const oInput = oEvent.getSource();
+                            const sValue = oInput.getValue().trim();
+                            const oBindingContext = oInput.getBindingContext("viewModel");
+                            const oRowData = oBindingContext ? oBindingContext.getObject() : {};
+                            console.log("Vendor Submit triggered:", sValue, "Row Data:", oRowData);
+                            if (!oRowData.Description) {
+                                sap.m.MessageBox.warning("Please enter a material description before submitting vendor details.");
+                                return;
+                            }
+                            this.onMaterialInputChange(oEvent);
+                        },
+                        valueState: "None"
                     }),
                     new sap.m.Input({
                         value: "{viewModel>Quotation_Date}",
@@ -1993,7 +2136,7 @@ sap.ui.define([
                         value: "{viewModel>Freight_Clearance_Charges}", // Fixed typo
                         type: "Number",
                         change: this.onMaterialInputChange.bind(this),
-                        editable:false
+                        editable: false
                     }),
                     new sap.m.Input({
                         value: "{viewModel>Transportation_Charges}",
@@ -2100,22 +2243,31 @@ sap.ui.define([
                 let oData = oViewModel.getProperty("/materialData");
 
                 const sProperty = oInput.getBinding("value").getPath();
+                const sValue = oInput.getValue();
+                // const sPath = oContext.getPath();
+                // const iIndex = parseInt(sPath.split("/").pop(), 10);
+                // let oData = oViewModel.getProperty("/materialData");
+
+                // const sProperty = oInput.getBinding("value").getPath();
                 oData = oData.map((item, index) =>
                     index === iIndex ? { ...item, [sProperty]: oInput.getValue() } : { ...item }
                 );
-                // oData[iIndex] = {
-                //     ...oData[iIndex],
-                //     Description: oData[iIndex].Description || "",
-                //     Vendor_Details: oData[iIndex].Vendor_Details || "",
-                //     Quotation_Date: oData[iIndex].Quotation_Date || "",
-                //     Quotation_Price: oData[iIndex].Quotation_Price || "",
-                //     Payment_Terms: oData[iIndex].Payment_Terms || "",
-                //     Freight_Clearance_Charges: oData[iIndex].Quotation_Price ? (oData[iIndex].Quotation_Price * 17 /100) : "" || "", // Fixed typo
-                //     Transportation_Charges: oData[iIndex].Transportation_Charges || "",
-                //     SABER: oData[iIndex].SABER || "",
-                //     Total_Sub_Charges: oData[iIndex].Total_Sub_Charges || "",
-                //     Total_Price: oData[iIndex].Total_Price || ""
-                // };
+                oData[iIndex] = {
+                    ...oData[iIndex],
+                    [sProperty]: sValue,
+                    Description: oData[iIndex].Description || "",
+                    Vendor_Details: oData[iIndex].Vendor_Details || "",
+                    Quotation_Date: oData[iIndex].Quotation_Date || "",
+                    Quotation_Price: oData[iIndex].Quotation_Price || "",
+                    Payment_Terms: oData[iIndex].Payment_Terms || "",
+                    Freight_Clearance_Charges: oData[iIndex].Frieght_Clearance_Charges || "",
+
+                    // Freight_Clearance_Charges: oData[iIndex].Quotation_Price ? (oData[iIndex].Quotation_Price * 17 /100) : "" || "", // Fixed typo
+                    Transportation_Charges: oData[iIndex].Transportation_Charges || "",
+                    SABER: oData[iIndex].SABER || "",
+                    Total_Sub_Charges: oData[iIndex].Total_Sub_Charges || "",
+                    Total_Price: oData[iIndex].Quotation_Price || ""
+                };
 
                 oViewModel.setProperty("/materialData", oData);
                 console.log("materialData after input change:", JSON.parse(JSON.stringify(oData)));
@@ -2126,24 +2278,43 @@ sap.ui.define([
 
             this.updateTotalAmount();
         },
-        onMaterialTotalPriceChange(oEvent) {
+        // onMaterialTotalPriceChange(oEvent) {
+        //     const oInput = oEvent.getSource();
+        //     const oContext = oInput.getBindingContext("viewModel");
+        //     const sPath = oContext.getPath();
+        //     const iIndex = parseInt(sPath.split("/").pop(), 10);
+        //     const oData = this.getView().getModel("viewModel").getProperty("/materialData");
+
+        //     const quotation_Price = parseFloat(oData[iIndex].Quotation_Price) || 0;
+
+
+        //     if (quotation_Price) {
+        //         const total = quotation_Price.toFixed(2);
+        //         oData[iIndex].Total_Price = total;
+        //     } else {
+        //         oData[iIndex].Total_Price = "";
+        //     }
+
+        //     this.getView().getModel("viewModel").setProperty("/materialData", oData);
+        //     this.updateTotalAmount();
+        // },
+        onMaterialTotalPriceChange: function (oEvent) {
             const oInput = oEvent.getSource();
             const oContext = oInput.getBindingContext("viewModel");
             const sPath = oContext.getPath();
+            const oViewModel = this.getView().getModel("viewModel");
+            const oData = oViewModel.getProperty("/materialData");
             const iIndex = parseInt(sPath.split("/").pop(), 10);
-            const oData = this.getView().getModel("viewModel").getProperty("/materialData");
 
-            const quotation_Price = parseFloat(oData[iIndex].Quotation_Price) || 0;
+            const fQuotationPrice = parseFloat(oData[iIndex].Quotation_Price) || 0;
 
+            // Set Total_Price to Quotation_Price
+            oData[iIndex].Total_Price = fQuotationPrice.toFixed(2);
 
-            if (quotation_Price) {
-                const total = quotation_Price.toFixed(2);
-                oData[iIndex].Total_Price = total;
-            } else {
-                oData[iIndex].Total_Price = "";
-            }
+            // Refresh the model to update the table
+            oViewModel.setProperty("/materialData", [...oData]);
 
-            this.getView().getModel("viewModel").setProperty("/materialData", oData);
+            // Update the total amount (if applicable)
             this.updateTotalAmount();
         },
 
