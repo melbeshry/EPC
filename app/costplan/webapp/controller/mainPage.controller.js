@@ -1736,7 +1736,7 @@ sap.ui.define([
                         }
                         console.log("cofimed vendors", aSelectedIndices);
                         console.log("Selected Vendors:", aSelectedVendors);
-                       // oViewModel.setProperty("/totalAmount", totalAmount.toFixed(2));
+                        // oViewModel.setProperty("/totalAmount", totalAmount.toFixed(2));
                     }
                 });
                 oVBox.addItem(oCheckBox);
@@ -1767,10 +1767,10 @@ sap.ui.define([
                         oViewModel.setProperty("/materialData", aNewMaterialData);
                         const aData = this.getView().getModel("viewModel").getProperty("/materialData");
                         console.log(aData);
-                        
-                       const totalAmount = aData.reduce((sum, row) => sum + (parseFloat(row.Total_Price) || 0), 0).toFixed(2);
+
+                        const totalAmount = aData.reduce((sum, row) => sum + (parseFloat(row.Total_Price) || 0), 0).toFixed(2);
                         console.log(totalAmount);
-                        
+
                         oViewModel.setProperty("/totalAmount", totalAmount);
 
                         // Optional: Update service model Gross Price
@@ -1891,7 +1891,7 @@ sap.ui.define([
 
                 columns: [
                     "Material", "Vendor Details", "Quotation Date", "Quotation Price", "Payment Terms",
-                    "Freight & Clearance Charges (17%)", "Transportation Charges", "SABER", "Total Sub-Charges", "Total Price"
+                    "Freight & Clearance Charges(%)", "Freight & Clearance Charges", "Transportation Charges", "SABER", "Total Sub-Charges", "Total Price"
                 ].map(text => new sap.m.Column({
                     header: new sap.m.Text({ text }),
                     //hAlign: "Center",
@@ -1913,40 +1913,6 @@ sap.ui.define([
                     new sap.m.HBox({
                         alignItems: "Center",
                         items: [
-                            // new sap.m.Input({
-                            //     placeholder: "Select Material Description",
-                            //     showValueHelp: true,
-                            //     required: true,
-                            //     width: "300px",
-                            //     value: "{viewModel>/selectedMaterialDesc}",
-                            //     valueHelpRequest: this.onValueDescHelpRequest.bind(this),
-                            //     change: this.onMaterialInputChange.bind(this)
-                            // }),
-                            // new sap.m.Button({
-                            //     text: "Add Vendor Entry",
-                            //     icon: "sap-icon://add",
-                            //     type: "Emphasized",
-                            //     press: () => {
-                            //         const sDesc = oViewModel.getProperty("/selectedMaterialDesc");
-                            //         if (!sDesc) {
-                            //             return sap.m.MessageBox.warning("Please select a material description first.");
-                            //         }
-
-                            //         const aData = oViewModel.getProperty("/materialData") || [];
-                            //         aData.push({
-                            //             Description: sDesc,
-                            //             Vendor_Details: "",
-                            //             Quotation_Date: "",
-                            //             Quotation_Price: "",
-                            //             Payment_Terms: "",
-                            //             Transportation_Charges: "",
-                            //             SABER: "",
-                            //             Total_Sub_Charges: "",
-                            //             Total_Price: ""
-                            //         });
-                            //         oViewModel.setProperty("/materialData", [...aData]);
-                            //     }
-                            // }).addStyleClass("sapUiSmallMarginBegin"),
                             new sap.m.Button({
                                 text: "Confirm Vendor Selection",
                                 icon: "sap-icon://accept",
@@ -2045,7 +2011,7 @@ sap.ui.define([
 
                 oViewModel.setProperty("/materialData", [{
                     selectedMaterialDesc: "", Vendor_Details: "", Quotation_Date: "", Quotation_Price: "",
-                    Payment_Terms: "", Freight_Clearance_Charges: "", Transportation_Charges: "", SABER: "", Total_Sub_Charges: "", Total_Price: ""
+                    Payment_Terms: "", Freight_Clearance_Charges_Percentage: "", Freight_Clearance_Charges: "", Transportation_Charges: "", SABER: "", Total_Sub_Charges: "", Total_Price: ""
                 }]);
             } else if (sCategory === "Cables") {
                 oViewModel.setProperty("/cablesData", [{
@@ -2125,6 +2091,12 @@ sap.ui.define([
                         change: this.onMaterialInputChange.bind(this)
                     }),
                     new sap.m.Input({
+                        value: "{viewModel>Freight_Clearance_Charges_Percentage}",
+                        type: "Number",
+                        placeholder: "Enter Percentage",
+                        change: this.onMaterialInputChange.bind(this),
+                    }),
+                    new sap.m.Input({
                         value: "{viewModel>Freight_Clearance_Charges}",
                         type: "Number",
                         change: this.onMaterialInputChange.bind(this),
@@ -2143,7 +2115,8 @@ sap.ui.define([
                     new sap.m.Input({
                         value: "{viewModel>Total_Sub_Charges}",
                         type: "Number",
-                        change: this.onMaterialInputChange.bind(this)
+                        change: this.onMaterialInputChange.bind(this),
+                        editable: false
                     }),
                     new sap.m.Input({
                         value: "{viewModel>Total_Price}",
@@ -2237,11 +2210,6 @@ sap.ui.define([
 
                 const sProperty = oInput.getBinding("value").getPath();
                 const sValue = oInput.getValue();
-                // const sPath = oContext.getPath();
-                // const iIndex = parseInt(sPath.split("/").pop(), 10);
-                // let oData = oViewModel.getProperty("/materialData");
-
-                // const sProperty = oInput.getBinding("value").getPath();
                 oData = oData.map((item, index) =>
                     index === iIndex ? { ...item, [sProperty]: oInput.getValue() } : { ...item }
                 );
@@ -2253,7 +2221,8 @@ sap.ui.define([
                     Quotation_Date: oData[iIndex].Quotation_Date || "",
                     Quotation_Price: oData[iIndex].Quotation_Price || "",
                     Payment_Terms: oData[iIndex].Payment_Terms || "",
-                    Freight_Clearance_Charges: oData[iIndex].Frieght_Clearance_Charges || "",
+                    Freight_Clearance_Charges_Percentage: oData[iIndex].Freight_Clearance_Charges_Percentage || "",
+                    // Freight_Clearance_Charges: oData[iIndex].Frieght_Clearance_Charges || "",
 
                     // Freight_Clearance_Charges: oData[iIndex].Quotation_Price ? (oData[iIndex].Quotation_Price * 17 / 100) : "" || "",
                     Transportation_Charges: oData[iIndex].Transportation_Charges || "",
@@ -2263,9 +2232,12 @@ sap.ui.define([
                     Total_Price: oData[iIndex].Quotation_Price || ""
                 };
 
-                // Calculate Freight_Clearance_Charges (17% of Quotation_Price)
+                // Calculate Freight_Clearance_Charges (Quotation_Price * Freight_Clearance_Charges_Percentage / 100)
                 const fQuotationPrice = parseFloat(oData[iIndex].Quotation_Price) || 0;
-                oData[iIndex].Freight_Clearance_Charges = fQuotationPrice ? (fQuotationPrice * 0.17).toFixed(2) : "";
+                const fClearancePercentage = parseFloat(oData[iIndex].Freight_Clearance_Charges_Percentage) || 0;
+                oData[iIndex].Freight_Clearance_Charges = fQuotationPrice && fClearancePercentage
+                    ? (fQuotationPrice * (fClearancePercentage / 100)).toFixed(2)
+                    : "";
 
                 // Calculate Total_Sub_Charges (sum of Freight_Clearance_Charges, Transportation_Charges, SABER)
                 const fFreightCharges = parseFloat(oData[iIndex].Freight_Clearance_Charges) || 0;
@@ -2302,6 +2274,7 @@ sap.ui.define([
         //     this.getView().getModel("viewModel").setProperty("/materialData", oData);
         //     this.updateTotalAmount();
         // },
+       
         onMaterialTotalPriceChange: function (oEvent) {
             const oInput = oEvent.getSource();
             const oContext = oInput.getBindingContext("viewModel");
@@ -2481,7 +2454,7 @@ sap.ui.define([
             } else if (sCategory === "Material") {
                 const aData = this.getView().getModel("viewModel").getProperty("/materialData");
                 console.log(aData);
-                
+
                 totalAmount = aData.reduce((sum, row) => sum + (parseFloat(row.Total_Price) || 0), 0).toFixed(2);
             }
             else if (sCategory === "Cables") {
@@ -2586,53 +2559,53 @@ sap.ui.define([
         //     this._oSimulationDialog.close();
         // },
         //Save Sim With a validation of empty rows or not...
-        onSaveSimulation: function () {
-            const oViewModel = this.getView().getModel("viewModel");
-            const sCategory = oViewModel.getProperty("/selectedCategory");
-            const oODataModel = this.getView().getModel("odataV4Model");
-            const totalAmount = oViewModel.getProperty("/totalAmount");
-            const oSelectedService = oViewModel.getProperty("/selectedService");
+        // onSaveSimulation: function () {
+        //     const oViewModel = this.getView().getModel("viewModel");
+        //     const sCategory = oViewModel.getProperty("/selectedCategory");
+        //     const oODataModel = this.getView().getModel("odataV4Model");
+        //     const totalAmount = oViewModel.getProperty("/totalAmount");
+        //     const oSelectedService = oViewModel.getProperty("/selectedService");
 
-            const aSimulationData = oViewModel.getProperty("/simulationData") || [];
-            const aIndirectCostData = oViewModel.getProperty("/indirectCostData") || [];
-            const aMaterialData = oViewModel.getProperty("/materialData") || [];
-            const aCablesData = oViewModel.getProperty("/cablesData") || [];
+        //     const aSimulationData = oViewModel.getProperty("/simulationData") || [];
+        //     const aIndirectCostData = oViewModel.getProperty("/indirectCostData") || [];
+        //     const aMaterialData = oViewModel.getProperty("/materialData") || [];
+        //     const aCablesData = oViewModel.getProperty("/cablesData") || [];
 
-            const isEmptySimulation = aSimulationData.length === 0 || aSimulationData.every(item =>
-                !item.Salary && !item.Months && !item.NoOfPersons && !item.Amount
-            );
-            const isEmptyIndirectCost = aIndirectCostData.length === 0 || aIndirectCostData.every(item =>
-                !item.Description && !item.Unit && !item.Qty && !item.Cost && !item.Labour && !item.Total
-            );
-            const isEmptyMaterial = aMaterialData.length === 0 || aMaterialData.every(item =>
-                !item.Description && !item.Vendor_Details && !item.Quotation_Date && !item.Quotation_Price &&
-                !item.Payment_Terms && !item.Freight_Clearance_Charges && !item.Transportation_Charges &&
-                !item.SABER && !item.Total_Sub_Charges && !item.Total_Price
-            );
-            const isEmptyCables = aCablesData.length === 0 || aCablesData.every(item =>
-                !item.Description && !item.Circuit && !item.Runs && !item.No_of_ph && !item.Approximate_Meter &&
-                !item.Total && !item.Unit_Price && !item.Total_Price
-            );
+        //     const isEmptySimulation = aSimulationData.length === 0 || aSimulationData.every(item =>
+        //         !item.Salary && !item.Months && !item.NoOfPersons && !item.Amount
+        //     );
+        //     const isEmptyIndirectCost = aIndirectCostData.length === 0 || aIndirectCostData.every(item =>
+        //         !item.Description && !item.Unit && !item.Qty && !item.Cost && !item.Labour && !item.Total
+        //     );
+        //     const isEmptyMaterial = aMaterialData.length === 0 || aMaterialData.every(item =>
+        //         !item.Description && !item.Vendor_Details && !item.Quotation_Date && !item.Quotation_Price &&
+        //         !item.Payment_Terms && !item.Freight_Clearance_Charges && !item.Transportation_Charges &&
+        //         !item.SABER && !item.Total_Sub_Charges && !item.Total_Price
+        //     );
+        //     const isEmptyCables = aCablesData.length === 0 || aCablesData.every(item =>
+        //         !item.Description && !item.Circuit && !item.Runs && !item.No_of_ph && !item.Approximate_Meter &&
+        //         !item.Total && !item.Unit_Price && !item.Total_Price
+        //     );
 
-            const isCurrentTableEmpty =
-                (sCategory === "EAndD" && isEmptySimulation) ||
-                (sCategory === "IndirectCost" && isEmptyIndirectCost) ||
-                (sCategory === "Material" && isEmptyMaterial) ||
-                (sCategory === "Cables" && isEmptyCables);
+        //     const isCurrentTableEmpty =
+        //         (sCategory === "EAndD" && isEmptySimulation) ||
+        //         (sCategory === "IndirectCost" && isEmptyIndirectCost) ||
+        //         (sCategory === "Material" && isEmptyMaterial) ||
+        //         (sCategory === "Cables" && isEmptyCables);
 
-            if (isCurrentTableEmpty) {
-                sap.m.MessageBox.warning("No values saved. The table is empty or contains no valid data.", {
-                    title: "Empty Table",
-                    onClose: () => {
-                    }
-                });
-                return;
-            }
+        //     if (isCurrentTableEmpty) {
+        //         sap.m.MessageBox.warning("No values saved. The table is empty or contains no valid data.", {
+        //             title: "Empty Table",
+        //             onClose: () => {
+        //             }
+        //         });
+        //         return;
+        //     }
 
 
 
-            this._performSave(oViewModel, oSelectedService, totalAmount);
-        },
+        //     this._performSave(oViewModel, oSelectedService, totalAmount);
+        // },
 
         _performSave: function (oViewModel, oSelectedService, totalAmount) {
             const oServiceModel = this.getView().getModel("serviceModel");
@@ -3058,6 +3031,8 @@ sap.ui.define([
         //       sap.m.MessageBox.error("Save failed: " + e.message);
         //     }
         //   },
+       
+       
         updateServiceLinesTable() {
             var sQuotation = this.getView().getModel("viewModel").getProperty("/quotationNumber");
             var sItemNumber = this.getView().getModel("viewModel").getProperty("/itemNumber");
